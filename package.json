@@ -1,0 +1,10 @@
+{
+  "name": "arre-ads-dashboard",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@google-analytics/data": "^4.5.0",
+    "@supabase/supabase-js": "^2.43.0"
+  }
+}

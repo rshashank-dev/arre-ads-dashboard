@@ -1,0 +1,18 @@
+{
+  "crons": [
+    {
+      "path": "/api/sync-ads",
+      "schedule": "30 19 * * *"
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "/api/:path*"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}
