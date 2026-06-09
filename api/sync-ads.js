@@ -78,7 +78,8 @@ async function fetchGA4(date) {
   const startDate = date;
   const endDate   = date;
 
-  // GA4 uses sessionCampaignId which matches Meta campaign_id
+  // GA4 sessionCampaignName = Meta numeric campaign_id (confirmed via debug)
+  // sessionCampaignId is ad-level tracking string, do NOT use for joining
   const hostFilter = {
     filter: {
       fieldName: 'hostName',
@@ -86,20 +87,20 @@ async function fetchGA4(date) {
     },
   };
 
-  // ── 1. Page view users by sessionCampaignId ──
+  // ── 1. Page view users by sessionCampaignName (holds Meta campaign_id) ──
   const [visitorsResponse] = await client.runReport({
     property: `properties/${propertyId}`,
     dateRanges: [{ startDate, endDate }],
-    dimensions: [{ name: 'sessionCampaignId' }],
+    dimensions: [{ name: 'sessionCampaignName' }],
     metrics:    [{ name: 'activeUsers' }],
     dimensionFilter: hostFilter,
   });
 
-  // ── 2. WA button click events by sessionCampaignId ──
+  // ── 2. WA button click events by sessionCampaignName ──
   const [waResponse] = await client.runReport({
     property: `properties/${propertyId}`,
     dateRanges: [{ startDate, endDate }],
-    dimensions: [{ name: 'sessionCampaignId' }],
+    dimensions: [{ name: 'sessionCampaignName' }],
     metrics:    [{ name: 'eventCount' }],
     dimensionFilter: {
       andGroup: {
@@ -114,8 +115,8 @@ async function fetchGA4(date) {
           {
             notExpression: {
               filter: {
-                fieldName: 'sessionCampaignId',
-                inListFilter: { values: ['(not set)', '(direct)', '(none)'] },
+                fieldName: 'sessionCampaignName',
+                inListFilter: { values: ['(not set)', '(direct)', '(none)', '(referral)', '(organic)'] },
               },
             },
           },
@@ -124,15 +125,17 @@ async function fetchGA4(date) {
     },
   });
 
-  // Build maps: campaign_id -> count
+  // Build maps: meta_campaign_id -> count (aggregate across multiple ad sets)
   const visitorsMap = {};
   for (const row of visitorsResponse.rows || []) {
-    visitorsMap[row.dimensionValues[0].value] = parseInt(row.metricValues[0].value, 10);
+    const id = row.dimensionValues[0].value;
+    visitorsMap[id] = (visitorsMap[id] || 0) + parseInt(row.metricValues[0].value, 10);
   }
 
   const waMap = {};
   for (const row of waResponse.rows || []) {
-    waMap[row.dimensionValues[0].value] = parseInt(row.metricValues[0].value, 10);
+    const id = row.dimensionValues[0].value;
+    waMap[id] = (waMap[id] || 0) + parseInt(row.metricValues[0].value, 10);
   }
 
   return { visitorsMap, waMap };
