@@ -10,17 +10,10 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_KEY
 );
 
-// ── helpers ──────────────────────────────────────────────────────────────────
-
 function yesterday() {
   const d = new Date();
   d.setDate(d.getDate() - 1);
-  return d.toISOString().split('T')[0]; // YYYY-MM-DD
-}
-
-function metaDate(d) {
-  // Meta uses YYYY-MM-DD same format
-  return d;
+  return d.toISOString().split('T')[0];
 }
 
 // ── Meta Ads Insights ─────────────────────────────────────────────────────────
@@ -30,6 +23,7 @@ async function fetchMeta(date) {
   const accountId = process.env.META_AD_ACCOUNT_ID;
 
   const fields = [
+    'campaign_id',
     'campaign_name',
     'impressions',
     'reach',
@@ -37,7 +31,6 @@ async function fetchMeta(date) {
     'spend',
     'cpc',
     'actions',
-    'action_values',
   ].join(',');
 
   const url = `https://graph.facebook.com/v19.0/act_${accountId}/insights` +
@@ -53,12 +46,12 @@ async function fetchMeta(date) {
   if (json.error) throw new Error(`Meta API error: ${json.error.message}`);
 
   const rows = (json.data || []).map(r => {
-    // landing_page_view action count
     const landingAction = (r.actions || []).find(a => a.action_type === 'landing_page_view');
     const landings = landingAction ? parseInt(landingAction.value, 10) : 0;
 
     return {
       sync_date:     date,
+      campaign_id:   r.campaign_id,
       campaign_name: r.campaign_name,
       src:           'meta',
       impressions:   parseInt(r.impressions || 0, 10),
@@ -78,50 +71,40 @@ async function fetchMeta(date) {
 // ── GA4 Data API ──────────────────────────────────────────────────────────────
 
 async function fetchGA4(date) {
-  const propertyId = process.env.GA4_PROPERTY_ID;
-
-  // Parse service account JSON from env var
+  const propertyId  = process.env.GA4_PROPERTY_ID;
   const credentials = JSON.parse(process.env.GA4_SERVICE_ACCOUNT_JSON);
-
-  const client = new BetaAnalyticsDataClient({ credentials });
+  const client      = new BetaAnalyticsDataClient({ credentials });
 
   const startDate = date;
   const endDate   = date;
 
-  // ── 1. Page view users by utm_campaign ──
+  // GA4 uses sessionCampaignId which matches Meta campaign_id
+  const hostFilter = {
+    filter: {
+      fieldName: 'hostName',
+      stringFilter: { matchType: 'EXACT', value: 'docs-teal-mu.vercel.app' },
+    },
+  };
+
+  // ── 1. Page view users by sessionCampaignId ──
   const [visitorsResponse] = await client.runReport({
     property: `properties/${propertyId}`,
     dateRanges: [{ startDate, endDate }],
-    dimensions: [
-      { name: 'sessionCampaignName' },
-    ],
-    metrics: [
-      { name: 'activeUsers' },
-    ],
-    dimensionFilter: {
-      filter: {
-        fieldName: 'hostName',
-        stringFilter: {
-          matchType: 'EXACT',
-          value: 'docs-teal-mu.vercel.app',
-        },
-      },
-    },
+    dimensions: [{ name: 'sessionCampaignId' }],
+    metrics:    [{ name: 'activeUsers' }],
+    dimensionFilter: hostFilter,
   });
 
-  // ── 2. WhatsApp button click events by utm_campaign ──
+  // ── 2. WA button click events by sessionCampaignId ──
   const [waResponse] = await client.runReport({
     property: `properties/${propertyId}`,
     dateRanges: [{ startDate, endDate }],
-    dimensions: [
-      { name: 'sessionCampaignName' },
-    ],
-    metrics: [
-      { name: 'eventCount' },
-    ],
+    dimensions: [{ name: 'sessionCampaignId' }],
+    metrics:    [{ name: 'eventCount' }],
     dimensionFilter: {
       andGroup: {
         expressions: [
+          hostFilter,
           {
             filter: {
               fieldName: 'eventName',
@@ -129,21 +112,10 @@ async function fetchGA4(date) {
             },
           },
           {
-            filter: {
-              fieldName: 'hostName',
-              stringFilter: {
-                matchType: 'EXACT',
-                value: 'docs-teal-mu.vercel.app',
-              },
-            },
-          },
-          {
             notExpression: {
               filter: {
-                fieldName: 'sessionCampaignName',
-                inListFilter: {
-                  values: ['(referral)', '(direct)', '(organic)', '(none)'],
-                },
+                fieldName: 'sessionCampaignId',
+                inListFilter: { values: ['(not set)', '(direct)', '(none)'] },
               },
             },
           },
@@ -152,34 +124,23 @@ async function fetchGA4(date) {
     },
   });
 
-  // Build maps: campaign -> count
+  // Build maps: campaign_id -> count
   const visitorsMap = {};
   for (const row of visitorsResponse.rows || []) {
-    const campaign = row.dimensionValues[0].value;
-    visitorsMap[campaign] = parseInt(row.metricValues[0].value, 10);
+    visitorsMap[row.dimensionValues[0].value] = parseInt(row.metricValues[0].value, 10);
   }
 
   const waMap = {};
   for (const row of waResponse.rows || []) {
-    const campaign = row.dimensionValues[0].value;
-    waMap[campaign] = parseInt(row.metricValues[0].value, 10);
+    waMap[row.dimensionValues[0].value] = parseInt(row.metricValues[0].value, 10);
   }
 
   return { visitorsMap, waMap };
 }
 
-// ── normalize campaign names for joining ─────────────────────────────────────
-// Meta campaign names and GA4 utm_campaign values may differ slightly.
-// This does a simple lowercase+trim normalize for matching.
-
-function normalize(name) {
-  return (name || '').toLowerCase().trim();
-}
-
 // ── main handler ──────────────────────────────────────────────────────────────
 
 export default async function handler(req, res) {
-  // Allow manual trigger via GET, cron also uses GET
   if (req.method !== 'GET' && req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -189,7 +150,6 @@ export default async function handler(req, res) {
   try {
     console.log(`[sync-ads] Syncing date: ${date}`);
 
-    // Fetch both sources in parallel
     const [metaRows, ga4Data] = await Promise.all([
       fetchMeta(date),
       fetchGA4(date),
@@ -197,36 +157,13 @@ export default async function handler(req, res) {
 
     const { visitorsMap, waMap } = ga4Data;
 
-    // Join GA4 data into Meta rows by normalized campaign name
-    const upsertRows = metaRows.map(row => {
-      const key = normalize(row.campaign_name);
+    // Join GA4 into Meta rows by campaign_id
+    const upsertRows = metaRows.map(row => ({
+      ...row,
+      ga_visitors: visitorsMap[row.campaign_id] || 0,
+      wa_joins:    waMap[row.campaign_id]        || 0,
+    }));
 
-      // Try exact match first, then partial match
-      let visitors = visitorsMap[key] || 0;
-      let waJoins  = waMap[key]       || 0;
-
-      if (!visitors) {
-        // Try partial match — GA4 utm_campaign might be shorter
-        for (const [gaKey, val] of Object.entries(visitorsMap)) {
-          if (gaKey.includes(key) || key.includes(gaKey)) {
-            visitors = val;
-            break;
-          }
-        }
-      }
-      if (!waJoins) {
-        for (const [gaKey, val] of Object.entries(waMap)) {
-          if (gaKey.includes(key) || key.includes(gaKey)) {
-            waJoins = val;
-            break;
-          }
-        }
-      }
-
-      return { ...row, ga_visitors: visitors, wa_joins: waJoins };
-    });
-
-    // Upsert into Supabase (unique on sync_date + campaign_name + src)
     const { error } = await supabase
       .from('ads_campaigns')
       .upsert(upsertRows, { onConflict: 'sync_date,campaign_name,src' });
