@@ -170,7 +170,12 @@ const DAYS=["S","M","T","W","T","F","S"];
 const WARN_LANDING=2.0,WARN_WA=50;
 
 // default: last 30 days up to yesterday
-function toYYYYMMDD(d){return d.toISOString().split('T')[0]}
+function toYYYYMMDD(d){
+  const y=d.getFullYear();
+  const m=String(d.getMonth()+1).padStart(2,'0');
+  const day=String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${day}`;
+}
 function yesterday(){const d=new Date();d.setDate(d.getDate()-1);return d}
 function daysAgo(n){const d=new Date();d.setDate(d.getDate()-n);return d}
 
