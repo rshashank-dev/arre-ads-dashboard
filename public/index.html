@@ -18,24 +18,31 @@
   --r:8px;--rs:5px;
 }
 body{background:var(--bg);color:var(--t1);font-family:'DM Sans',sans-serif;font-size:13px;min-height:100vh;-webkit-font-smoothing:antialiased}
+
+/* topbar — YOUR original sizing */
 .topbar{height:100px;background:var(--bg2);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 24px;position:sticky;top:0;z-index:50}
 .topbar-l{display:flex;align-items:center;gap:12px}
 .logo-wrap img{height:70px;display:block;filter:brightness(0) invert(1)}
 .topbar-title span{font-family:'Syne',sans-serif;font-weight:700;font-size:23px;color:var(--t1)}
+.sync-badge{font-size:11px;color:var(--t3);font-family:'DM Mono',monospace}
+
+/* controls */
 .controls{background:var(--bg2);border-bottom:1px solid var(--border);padding:0 24px;display:flex;align-items:center;height:44px;gap:12px;position:relative}
-.date-btn{display:flex;align-items:center;gap:8px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--rs);padding:5px 11px;cursor:pointer;font-size:15px;color:var(--t1);font-family:'DM Mono',monospace;user-select:none;transition:border-color .15s}
+.date-btn{display:flex;align-items:center;gap:8px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--rs);padding:5px 11px;cursor:pointer;font-size:12px;color:var(--t1);font-family:'DM Mono',monospace;user-select:none;transition:border-color .15s}
 .date-btn:hover{border-color:var(--accent)}
 .date-btn svg{flex-shrink:0;opacity:.5}
+
+/* date popover */
 .popover{display:none;position:absolute;top:calc(100% + 6px);left:24px;background:var(--bg2);border:1px solid var(--border2);border-radius:var(--r);box-shadow:0 8px 32px rgba(0,0,0,0.5);z-index:200;padding:16px;width:560px}
 .popover.open{display:block}
 .pop-cals{display:grid;grid-template-columns:1fr 1fr;gap:20px}
 .cal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
-.cal-head span{font-family:'Syne',sans-serif;font-size:15px;font-weight:700;color:var(--t1)}
-.cal-nav{background:none;border:none;color:var(--t2);cursor:pointer;padding:2px 6px;border-radius:4px;font-size:1px;line-height:1}
+.cal-head span{font-family:'Syne',sans-serif;font-size:12px;font-weight:700;color:var(--t1)}
+.cal-nav{background:none;border:none;color:var(--t2);cursor:pointer;padding:2px 6px;border-radius:4px;font-size:14px;line-height:1}
 .cal-nav:hover{background:var(--bg3);color:var(--t1)}
 .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:1px}
-.cal-dow{text-align:center;font-size:15px;color:var(--t3);padding:3px 0;font-weight:500}
-.cal-day{text-align:center;padding:5px 2px;font-size:15px;border-radius:4px;cursor:pointer;color:var(--t2);transition:background .1s,color .1s;font-family:'DM Mono',monospace}
+.cal-dow{text-align:center;font-size:10px;color:var(--t3);padding:3px 0;font-weight:500}
+.cal-day{text-align:center;padding:5px 2px;font-size:12px;border-radius:4px;cursor:pointer;color:var(--t2);transition:background .1s,color .1s;font-family:'DM Mono',monospace}
 .cal-day:hover:not(.empty){background:var(--bg4);color:var(--t1)}
 .cal-day.empty{color:var(--t3);cursor:default}
 .cal-day.in-range{background:rgba(46,196,182,0.1);color:var(--t1);border-radius:0}
@@ -44,37 +51,78 @@ body{background:var(--bg);color:var(--t1);font-family:'DM Sans',sans-serif;font-
 .cal-day.end{border-radius:0 4px 4px 0}
 .cal-day.start.end{border-radius:4px}
 .pop-footer{display:flex;align-items:center;justify-content:flex-end;gap:8px;margin-top:14px;padding-top:12px;border-top:1px solid var(--border)}
-.btn-cancel{background:none;border:1px solid var(--border2);border-radius:var(--rs);color:var(--t2);font-family:'DM Sans',sans-serif;font-size:15px;padding:5px 14px;cursor:pointer}
-.btn-apply{background:var(--accent);border:none;border-radius:var(--rs);color:#0f1035;font-family:'Syne',sans-serif;font-weight:700;font-size:15px;padding:5px 14px;cursor:pointer}
+.btn-cancel{background:none;border:1px solid var(--border2);border-radius:var(--rs);color:var(--t2);font-family:'DM Sans',sans-serif;font-size:12px;padding:5px 14px;cursor:pointer}
+.btn-apply{background:var(--accent);border:none;border-radius:var(--rs);color:#0f1035;font-family:'Syne',sans-serif;font-weight:700;font-size:12px;padding:5px 14px;cursor:pointer}
+
+/* page */
 .page{padding:20px 24px;max-width:1500px;margin:0 auto}
-.sl{font-size:15px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--t3);margin-bottom:8px;margin-top:20px}
+.sl{font-size:10px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--t3);margin-bottom:8px;margin-top:20px}
 .sl:first-of-type{margin-top:0}
 .kgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin-bottom:4px}
 .kpi{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:12px 14px}
-.kl{font-size:15px;color:var(--t2);margin-bottom:5px}
-.kv{font-family:'Syne',sans-serif;font-size:25px;font-weight:700;color:var(--t1);line-height:1}
+.kl{font-size:11px;color:var(--t2);margin-bottom:5px}
+.kv{font-family:'Syne',sans-serif;font-size:22px;font-weight:700;color:var(--t1);line-height:1}
 .tcard{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
 .tscroll{overflow-x:auto}
 table{width:100%;border-collapse:collapse;font-size:12px;white-space:nowrap}
-thead tr.grp th{padding:5px 12px;font-size:15px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;border-bottom:1px solid var(--border);text-align:center;background:var(--bg2)}
-thead tr.grp th:first-child,thead tr.grp th:nth-child(2){background:var(--bg2);border-bottom:1px solid var(--border)}
+
+/* table header — extra cols for checkbox + expand */
+thead tr.grp th{padding:5px 12px;font-size:10px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;border-bottom:1px solid var(--border);text-align:center;background:var(--bg2)}
 thead tr.grp th.gm{background:var(--meta-bg);color:var(--meta)}
 thead tr.grp th.gg{background:var(--ga-bg);color:var(--ga)}
-thead tr.cols th{padding:7px 12px;text-align:right;font-size:15px;font-weight:500;color:var(--t3);background:var(--bg3);border-bottom:1px solid var(--border)}
-thead tr.cols th:first-child{text-align:left}
+thead tr.cols th{padding:7px 12px;text-align:right;font-size:11px;font-weight:500;color:var(--t3);background:var(--bg3);border-bottom:1px solid var(--border)}
+thead tr.cols th.tcb{width:28px;text-align:center}
+thead tr.cols th.tex{width:28px;text-align:center}
+thead tr.cols th.tname{text-align:left}
 thead tr.cols th.sh{text-align:center;width:52px}
-tbody td{padding:9px 12px;text-align:right;color:var(--t1);border-bottom:1px solid var(--border);font-family:'DM Mono',monospace;font-size:13px}
-tbody td:first-child{text-align:left;font-family:'DM Sans',sans-serif;font-size:13px;max-width:200px;overflow:hidden;text-overflow:ellipsis}
+
+/* tbody */
+tbody td{padding:9px 12px;text-align:right;color:var(--t1);border-bottom:1px solid var(--border);font-family:'DM Mono',monospace;font-size:11px}
+tbody td.tcb{text-align:center;padding:9px 6px;width:28px}
+tbody td.tex{text-align:center;padding:9px 6px;width:28px}
+tbody td.tname{text-align:left;font-family:'DM Sans',sans-serif;font-size:12px;max-width:200px;overflow:hidden;text-overflow:ellipsis}
 tbody td.sc{text-align:center;font-family:'DM Sans',sans-serif}
 tbody tr:last-child td{border-bottom:none}
 tbody tr:hover td{background:var(--bg3)}
+
+/* excluded row */
+tbody tr.row-excluded td:not(.tcb){opacity:0.3}
+
+/* consolidated row */
 .row-total td{background:var(--bg3);font-weight:500;border-top:1px solid var(--border2);border-bottom:none}
-.row-total td:first-child{font-family:'Syne',sans-serif;font-size:14px}
-.badge{display:inline-block;font-size:12px;font-weight:500;padding:2px 7px;border-radius:4px}
+.row-total td.tname{font-family:'Syne',sans-serif;font-size:12px}
+
+/* expand sub-table */
+tr.sub-row td{background:var(--bg3);padding:0;border-bottom:1px solid var(--border)}
+.sub-inner{padding:0 12px 10px 52px}
+.sub-label{font-size:10px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;color:var(--t3);padding:8px 0 4px;font-family:'DM Sans',sans-serif}
+.sub-inner table{font-size:11px}
+.sub-inner thead tr.cols th{font-size:10px;background:var(--bg4)}
+.sub-inner tbody td{border-bottom:1px solid rgba(255,255,255,0.04)}
+.sub-inner tbody tr:last-child td{border-bottom:none}
+.sub-inner tbody tr.ad-row td{color:var(--t2)}
+.sub-inner tbody tr.ad-row td.tname{padding-left:20px}
+
+/* checkbox toggle */
+.row-toggle{width:16px;height:16px;border-radius:3px;border:1.5px solid var(--t3);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;transition:all .15s;background:none;user-select:none}
+.row-toggle.on{border-color:var(--good);color:var(--good)}
+.row-toggle.on::after{content:'✓';font-size:10px;line-height:1}
+.row-toggle.off{border-color:var(--warn);color:var(--warn)}
+.row-toggle.off::after{content:'✕';font-size:10px;line-height:1}
+
+/* expand button */
+.expand-btn{width:16px;height:16px;border-radius:3px;border:1.5px solid var(--t3);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;transition:all .15s;background:none;color:var(--t3);font-size:9px;user-select:none}
+.expand-btn:hover{border-color:var(--t2);color:var(--t2)}
+.expand-btn.open{border-color:var(--accent);color:var(--accent);transform:rotate(90deg)}
+
+/* badges */
+.badge{display:inline-block;font-size:10px;font-weight:500;padding:2px 7px;border-radius:4px}
 .bm{background:var(--meta-bg);color:var(--meta)}
 .bgoog{background:rgba(217,119,6,0.12);color:#fbbf24}
 .cw{color:var(--warn)}
 .cgood{color:var(--good)}
+
+/* states */
 .state-loading,.state-error,.state-empty{text-align:center;padding:40px 24px;color:var(--t3);font-size:12px}
 .state-error{color:var(--warn)}
 .spinner{display:inline-block;width:16px;height:16px;border:2px solid var(--border2);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;margin-right:8px;vertical-align:middle}
@@ -114,7 +162,7 @@ tbody tr:hover td{background:var(--bg3)}
           <span id="rm-label"></span>
           <button class="cal-nav" onclick="shiftMonth(1)">&#8594;</button>
         </div>
-        <div class="cal-grid" id="cal-right" style="pointer-events:auto"></div>
+        <div class="cal-grid" id="cal-right"></div>
       </div>
     </div>
     <div class="pop-footer">
@@ -142,12 +190,14 @@ tbody tr:hover td{background:var(--bg3)}
       <table>
         <thead>
           <tr class="grp">
-            <th></th><th></th>
+            <th></th><th></th><th></th><th></th>
             <th colspan="6" class="gm">Meta</th>
             <th colspan="4" class="gg">GA4</th>
           </tr>
           <tr class="cols">
-            <th>Campaign</th>
+            <th class="tcb"></th>
+            <th class="tex"></th>
+            <th class="tname">Campaign</th>
             <th class="sh">Src</th>
             <th>Impressions</th><th>Reach</th><th>Clicks</th>
             <th>Spent (&#8377;)</th><th>CPC (&#8377;)</th><th>&#8377; / Landing</th>
@@ -155,7 +205,7 @@ tbody tr:hover td{background:var(--bg3)}
           </tr>
         </thead>
         <tbody id="tbody">
-          <tr><td colspan="12" class="state-loading"><span class="spinner"></span>Loading data...</td></tr>
+          <tr><td colspan="14" class="state-loading"><span class="spinner"></span>Loading data...</td></tr>
         </tbody>
       </table>
     </div>
@@ -169,11 +219,9 @@ const MONTHS=["January","February","March","April","May","June","July","August",
 const DAYS=["S","M","T","W","T","F","S"];
 const WARN_LANDING=2.0,WARN_WA=50;
 
-// default: last 30 days up to yesterday
+// timezone-safe date
 function toYYYYMMDD(d){
-  const y=d.getFullYear();
-  const m=String(d.getMonth()+1).padStart(2,'0');
-  const day=String(d.getDate()).padStart(2,'0');
+  const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,'0'),day=String(d.getDate()).padStart(2,'0');
   return `${y}-${m}-${day}`;
 }
 function yesterday(){const d=new Date();d.setDate(d.getDate()-1);return d}
@@ -183,10 +231,26 @@ let selStart=daysAgo(7),selEnd=yesterday();
 let pendStart=null,pendEnd=null,picking=false;
 let leftYear=selStart.getFullYear(),leftMonth=selStart.getMonth();
 
+// state
+const excluded=new Set();
+const expanded=new Set();
+let cachedRows=[];
+
 function fmtLabel(d){return MONTHS[d.getMonth()].slice(0,3)+' '+d.getDate()+', '+d.getFullYear()}
 function sameDay(a,b){return a&&b&&toYYYYMMDD(a)===toYYYYMMDD(b)}
-function fmtN(v){if(v>=1000000)return(v/1000000).toFixed(2)+'M';if(v>=1000)return(v/1000).toFixed(1)+'K';return v.toLocaleString('en-IN')}
-function fmtR(v){return '\u20b9'+v.toFixed(2)}
+
+// ─── 1. Money: ₹ + Indian commas ────────────────────────────────────────────
+function fmtR(v){
+  if(v===0)return '\u20b90.00';
+  const parts=v.toFixed(2).split('.');
+  parts[0]=Number(parts[0]).toLocaleString('en-IN');
+  return '\u20b9'+parts[0]+'.'+parts[1];
+}
+function fmtN(v){
+  if(v>=1000000)return (v/1000000).toFixed(2)+'M';
+  if(v>=1000)   return (v/1000).toFixed(1)+'K';
+  return Number(v).toLocaleString('en-IN');
+}
 
 // Calendar
 function buildCal(year,month,side){
@@ -228,7 +292,7 @@ function pickDay(dt){
   renderCals();
 }
 function togglePop(e){
-  if(e) e.stopPropagation();
+  if(e)e.stopPropagation();
   const p=document.getElementById('popover');
   if(p.classList.contains('open')){p.classList.remove('open');}
   else{
@@ -240,7 +304,7 @@ function togglePop(e){
 function cancelPop(){document.getElementById('popover').classList.remove('open');pendStart=null;pendEnd=null;}
 function applyPop(){
   if(pendStart&&pendEnd){selStart=pendStart;selEnd=pendEnd;}
-  document.getElementById('date-label').textContent=fmtLabel(selStart)+' \u2014 '+fmtLabel(selEnd);
+  document.getElementById('date-label').textContent=fmtLabel(selStart)+'\u2014'+fmtLabel(selEnd);
   document.getElementById('popover').classList.remove('open');
   loadData();
 }
@@ -248,44 +312,61 @@ document.addEventListener('click',e=>{
   const pop=document.getElementById('popover');
   const btn=document.getElementById('date-btn');
   if(!pop.contains(e.target)&&!btn.contains(e.target)){
-    pop.classList.remove('open');
-    pendStart=null;pendEnd=null;picking=false;
+    pop.classList.remove('open');pendStart=null;pendEnd=null;picking=false;
   }
 });
 
+// ─── 2. Checkbox toggle ──────────────────────────────────────────────────────
+function toggleRow(key){
+  if(excluded.has(key))excluded.delete(key);
+  else excluded.add(key);
+  renderTable(cachedRows);
+}
+
+// ─── 3. Expand/collapse ──────────────────────────────────────────────────────
+function toggleExpand(key){
+  if(expanded.has(key))expanded.delete(key);
+  else expanded.add(key);
+  renderTable(cachedRows);
+}
+
 // Data fetch
 async function loadData(){
-  const from=toYYYYMMDD(selStart);
-  const to=toYYYYMMDD(selEnd);
-  document.getElementById('tbody').innerHTML='<tr><td colspan="12" class="state-loading"><span class="spinner"></span>Loading data...</td></tr>';
-
+  const from=toYYYYMMDD(selStart),to=toYYYYMMDD(selEnd);
+  document.getElementById('tbody').innerHTML='<tr><td colspan="14" class="state-loading"><span class="spinner"></span>Loading data...</td></tr>';
   try{
     const res=await fetch(`/api/campaigns?from=${from}&to=${to}`);
     const json=await res.json();
     if(!res.ok)throw new Error(json.error||'API error');
-    renderData(json.rows||[]);
+    cachedRows=json.rows||[];
+    renderTable(cachedRows);
   }catch(err){
-    document.getElementById('tbody').innerHTML=`<tr><td colspan="12" class="state-error">Failed to load: ${err.message}</td></tr>`;
+    document.getElementById('tbody').innerHTML=`<tr><td colspan="14" class="state-error">Failed to load: ${err.message}</td></tr>`;
   }
 }
 
-function renderData(rows){
+function renderTable(rows){
   if(!rows.length){
-    document.getElementById('tbody').innerHTML='<tr><td colspan="12" class="state-empty">No data for this date range. Run /api/sync-ads?date=YYYY-MM-DD to backfill.</td></tr>';
-    updateKPIs([]);
-    return;
+    document.getElementById('tbody').innerHTML='<tr><td colspan="14" class="state-empty">No data for this date range.</td></tr>';
+    updateKPIs([]);return;
   }
-  updateKPIs(rows);
 
-  const T={impressions:0,reach:0,clicks:0,spent:0,ga_visitors:0,wa_joins:0};
-  rows.forEach(r=>{T.impressions+=r.impressions;T.reach+=r.reach;T.clicks+=r.clicks;T.spent+=r.spent;T.ga_visitors+=r.ga_visitors;T.wa_joins+=r.wa_joins;});
-  const t_cpc=T.clicks>0?T.spent/T.clicks:0;
-  const t_clnd=T.ga_visitors>0?T.spent/T.ga_visitors:0;
-  const t_cwa=T.wa_joins>0?T.spent/T.wa_joins:0;
+  const included=rows.filter(r=>!excluded.has(r.campaign_name+'__'+r.src));
+  updateKPIs(included);
 
-  document.getElementById('tbody').innerHTML=rows.map(r=>`
-    <tr>
-      <td>${r.campaign_name}</td>
+  const sorted=[...rows].sort((a,b)=>b.spent-a.spent);
+  let html='';
+
+  sorted.forEach(r=>{
+    const key=r.campaign_name+'__'+r.src;
+    const isExcluded=excluded.has(key);
+    const isExpanded=expanded.has(key);
+    const safeKey=key.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+
+    html+=`<tr class="${isExcluded?'row-excluded':''}">
+      <td class="tcb"><div class="row-toggle ${isExcluded?'off':'on'}" onclick="toggleRow('${safeKey}')"></div></td>
+      <td class="tex"><div class="expand-btn ${isExpanded?'open':''}" onclick="toggleExpand('${safeKey}')">&#9658;</div></td>
+      <td class="tname">${r.campaign_name}</td>
       <td class="sc"><span class="badge ${r.src==='meta'?'bm':'bgoog'}">${r.src==='meta'?'Meta':'Google'}</span></td>
       <td>${fmtN(r.impressions)}</td>
       <td>${fmtN(r.reach)}</td>
@@ -297,20 +378,71 @@ function renderData(rows){
       <td>${fmtR(r.cost_visitor)}</td>
       <td>${fmtN(r.wa_joins)}</td>
       <td class="${r.cost_wa_join>=WARN_WA?'cw':r.cost_wa_join>0&&r.cost_wa_join<=10?'cgood':''}">${fmtR(r.cost_wa_join)}</td>
-    </tr>`).join('')+`
-    <tr class="row-total">
-      <td>Consolidated</td><td></td>
-      <td>${fmtN(T.impressions)}</td><td>${fmtN(T.reach)}</td><td>${fmtN(T.clicks)}</td>
-      <td>${fmtR(T.spent)}</td><td>${fmtR(t_cpc)}</td><td>${fmtR(t_clnd)}</td>
-      <td>${fmtN(T.ga_visitors)}</td><td>&mdash;</td>
-      <td>${fmtN(T.wa_joins)}</td><td>${fmtR(t_cwa)}</td>
     </tr>`;
+
+    if(isExpanded){
+      html+=`<tr class="sub-row"><td colspan="14"><div class="sub-inner">`;
+      if(r.adsets&&r.adsets.length){
+        html+=`<div class="sub-label">Ad Sets</div>
+        <table><thead><tr class="cols">
+          <th class="tname">Ad Set</th>
+          <th>Impressions</th><th>Reach</th><th>Clicks</th>
+          <th>Spent (&#8377;)</th><th>CPC (&#8377;)</th><th>&#8377; / Landing</th>
+          <th>Visitors</th><th>&#8377; / Visitor</th><th>WA Joins</th><th>&#8377; / WA Join</th>
+        </tr></thead><tbody>`;
+        r.adsets.forEach(as=>{
+          html+=`<tr>
+            <td class="tname">${as.adset_name}</td>
+            <td>${fmtN(as.impressions)}</td><td>${fmtN(as.reach)}</td><td>${fmtN(as.clicks)}</td>
+            <td>${fmtR(as.spent)}</td><td>${fmtR(as.cpc)}</td>
+            <td class="${as.cost_landing>=WARN_LANDING?'cw':''}">${fmtR(as.cost_landing)}</td>
+            <td>${fmtN(as.ga_visitors||0)}</td><td>${fmtR(as.cost_visitor||0)}</td>
+            <td>${fmtN(as.wa_joins||0)}</td>
+            <td class="${(as.cost_wa_join||0)>=WARN_WA?'cw':''}">${fmtR(as.cost_wa_join||0)}</td>
+          </tr>`;
+          if(as.ads&&as.ads.length){
+            as.ads.forEach(ad=>{
+              html+=`<tr class="ad-row">
+                <td class="tname" style="padding-left:20px">&#8627; ${ad.ad_name}</td>
+                <td>${fmtN(ad.impressions)}</td><td>${fmtN(ad.reach)}</td><td>${fmtN(ad.clicks)}</td>
+                <td>${fmtR(ad.spent)}</td><td>${fmtR(ad.cpc)}</td>
+                <td class="${ad.cost_landing>=WARN_LANDING?'cw':''}">${fmtR(ad.cost_landing)}</td>
+                <td>—</td><td>—</td><td>—</td><td>—</td>
+              </tr>`;
+            });
+          }
+        });
+        html+=`</tbody></table>`;
+      }else{
+        html+=`<div style="padding:10px 0;font-size:11px;color:var(--t3)">Ad set data not available yet — extend sync-ads.js to pull adset/ad level data from Meta.</div>`;
+      }
+      html+=`</div></td></tr>`;
+    }
+  });
+
+  // Consolidated (included rows only)
+  const T={impressions:0,reach:0,clicks:0,spent:0,ga_visitors:0,wa_joins:0};
+  included.forEach(r=>{T.impressions+=r.impressions;T.reach+=r.reach;T.clicks+=r.clicks;T.spent+=r.spent;T.ga_visitors+=r.ga_visitors;T.wa_joins+=r.wa_joins;});
+  const t_cpc=T.clicks>0?T.spent/T.clicks:0;
+  const t_clnd=T.ga_visitors>0?T.spent/T.ga_visitors:0;
+  const t_cwa=T.wa_joins>0?T.spent/T.wa_joins:0;
+
+  html+=`<tr class="row-total">
+    <td></td><td></td>
+    <td class="tname">Consolidated</td><td></td>
+    <td>${fmtN(T.impressions)}</td><td>${fmtN(T.reach)}</td><td>${fmtN(T.clicks)}</td>
+    <td>${fmtR(T.spent)}</td><td>${fmtR(t_cpc)}</td><td>${fmtR(t_clnd)}</td>
+    <td>${fmtN(T.ga_visitors)}</td><td>&mdash;</td>
+    <td>${fmtN(T.wa_joins)}</td><td>${fmtR(t_cwa)}</td>
+  </tr>`;
+
+  document.getElementById('tbody').innerHTML=html;
 }
 
 function updateKPIs(rows){
   const T={impressions:0,clicks:0,spent:0,ga_visitors:0,wa_joins:0};
   rows.forEach(r=>{T.impressions+=r.impressions;T.clicks+=r.clicks;T.spent+=r.spent;T.ga_visitors+=r.ga_visitors;T.wa_joins+=r.wa_joins;});
-  document.getElementById('k-spend').textContent='\u20b9'+T.spent.toLocaleString('en-IN',{maximumFractionDigits:0});
+  document.getElementById('k-spend').textContent=fmtR(T.spent);
   document.getElementById('k-impr').textContent=fmtN(T.impressions);
   document.getElementById('k-clicks').textContent=fmtN(T.clicks);
   document.getElementById('k-cpc').textContent=T.clicks>0?fmtR(T.spent/T.clicks):'—';
@@ -319,9 +451,9 @@ function updateKPIs(rows){
   document.getElementById('k-cwa').textContent=T.wa_joins>0?fmtR(T.spent/T.wa_joins):'—';
 }
 
-// Init
 document.addEventListener('DOMContentLoaded',()=>{
   document.getElementById('date-label').textContent=fmtLabel(selStart)+' \u2014 '+fmtLabel(selEnd);
+  document.getElementById('sync-badge').textContent='Data through yesterday · auto-syncs 1 AM IST';
   leftYear=selStart.getFullYear();
   leftMonth=selStart.getMonth();
   loadData();
