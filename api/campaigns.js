@@ -59,7 +59,10 @@ export default async function handler(req, res) {
     }
 
     // Compute derived metrics
-    const rows = Object.values(agg).map(r => ({
+    // drop rows where campaign had zero activity in this date range
+    const rows = Object.values(agg).filter(r =>
+      r.impressions > 0 || r.clicks > 0 || r.spent > 0
+    ).map(r => ({
       ...r,
       spent:        +r.spent.toFixed(2),
       cpc:          r.clicks   > 0 ? +(r.spent / r.clicks).toFixed(2)      : 0,
