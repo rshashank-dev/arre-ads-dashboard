@@ -57,29 +57,29 @@ body{background:var(--bg);color:var(--t1);font-family:'DM Sans',sans-serif;font-
 .page{padding:20px 24px;max-width:1500px;margin:0 auto}
 .sl{font-size:10px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--t3);margin-bottom:8px;margin-top:20px}
 .sl:first-of-type{margin-top:0}
-.kgrid{display:flex;gap:8px;margin-bottom:4px;overflow-x:auto;padding-bottom:2px}
-.kpi{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:12px 14px;flex:0 0 140px}
-.kl{font-size:11px;color:var(--t2);margin-bottom:5px}
-.kv{font-family:'Syne',sans-serif;font-size:22px;font-weight:700;color:var(--t1);line-height:1}
+.kgrid{display:grid;grid-template-columns:repeat(7,1fr);gap:8px;margin-bottom:4px}
+.kpi{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px}
+.kl{font-size:13px;color:var(--t2);margin-bottom:6px}
+.kv{font-family:'Syne',sans-serif;font-size:20px;font-weight:700;color:var(--t1);line-height:1}
 .tcard{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
 .tscroll{overflow-x:auto}
-table{width:100%;border-collapse:collapse;font-size:12px;white-space:nowrap}
+table{width:100%;border-collapse:collapse;font-size:15px;white-space:nowrap}
 
 /* table header — extra cols for checkbox + expand */
-thead tr.grp th{padding:5px 12px;font-size:10px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;border-bottom:1px solid var(--border);text-align:center;background:var(--bg2)}
+thead tr.grp th{padding:5px 12px;font-size:11px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;border-bottom:1px solid var(--border);text-align:center;background:var(--bg2)}
 thead tr.grp th.gm{background:var(--meta-bg);color:var(--meta)}
 thead tr.grp th.gg{background:var(--ga-bg);color:var(--ga)}
-thead tr.cols th{padding:7px 12px;text-align:right;font-size:11px;font-weight:500;color:var(--t3);background:var(--bg3);border-bottom:1px solid var(--border)}
+thead tr.cols th{padding:8px 12px;text-align:right;font-size:17px;font-weight:500;color:var(--t3);background:var(--bg3);border-bottom:1px solid var(--border)}
 thead tr.cols th.tcb{width:28px;text-align:center}
 thead tr.cols th.tex{width:28px;text-align:center}
 thead tr.cols th.tname{text-align:left}
 thead tr.cols th.sh{text-align:center;width:52px}
 
 /* tbody */
-tbody td{padding:9px 12px;text-align:right;color:var(--t1);border-bottom:1px solid var(--border);font-family:'DM Mono',monospace;font-size:11px}
-tbody td.tcb{text-align:center;padding:9px 6px;width:28px}
-tbody td.tex{text-align:center;padding:9px 6px;width:28px}
-tbody td.tname{text-align:left;font-family:'DM Sans',sans-serif;font-size:12px;max-width:200px;overflow:hidden;text-overflow:ellipsis}
+tbody td{padding:10px 12px;text-align:right;color:var(--t1);border-bottom:1px solid var(--border);font-family:'DM Mono',monospace;font-size:15px}
+tbody td.tcb{text-align:center;padding:10px 6px;width:28px}
+tbody td.tex{text-align:center;padding:10px 6px;width:28px}
+tbody td.tname{text-align:left;font-family:'DM Sans',sans-serif;font-size:15px;max-width:200px;overflow:hidden;text-overflow:ellipsis}
 tbody td.sc{text-align:center;font-family:'DM Sans',sans-serif}
 tbody tr:last-child td{border-bottom:none}
 tbody tr:hover td{background:var(--bg3)}
@@ -89,7 +89,7 @@ tbody tr.row-excluded td:not(.tcb){opacity:0.3}
 
 /* consolidated row */
 .row-total td{background:var(--bg3);font-weight:500;border-top:1px solid var(--border2);border-bottom:none}
-.row-total td.tname{font-family:'Syne',sans-serif;font-size:12px}
+.row-total td.tname{font-family:'Syne',sans-serif;font-size:15px}
 
 /* expand sub-table */
 tr.sub-row td{background:var(--bg3);padding:0;border-bottom:1px solid var(--border)}
