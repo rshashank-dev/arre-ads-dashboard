@@ -227,7 +227,7 @@ function toYYYYMMDD(d){
 function yesterday(){const d=new Date();d.setDate(d.getDate()-1);return d}
 function daysAgo(n){const d=new Date();d.setDate(d.getDate()-n);return d}
 
-let selStart=daysAgo(7),selEnd=yesterday();
+let selStart=daysAgo(30),selEnd=yesterday();
 let pendStart=null,pendEnd=null,picking=false;
 let leftYear=selStart.getFullYear(),leftMonth=selStart.getMonth();
 
@@ -425,8 +425,8 @@ function renderTable(rows){
           html+=`<tr>
             <td class="tname">${as.adset_name}</td>
             <td>${fmtN(as.impressions)}</td><td>${fmtN(as.reach)}</td><td>${fmtN(as.clicks)}</td>
-            <td>${fmtR(as.spent)}</td><td>${fmtR(as.cpc)}</td>
-            <td class="${as.cost_landing>=WARN_LANDING?'cw':''}">${fmtR(as.cost_landing)}</td>
+            <td>${fmtR(as.spent||0)}</td><td>${fmtR(as.cpc||0)}</td>
+            <td class="${(as.cost_landing||0)>=WARN_LANDING?'cw':''}">${fmtR(as.cost_landing||0)}</td>
             <td>${fmtN(as.ga_visitors||0)}</td><td>${fmtR(as.cost_visitor||0)}</td>
             <td>${fmtN(as.wa_joins||0)}</td>
             <td class="${(as.cost_wa_join||0)>=WARN_WA?'cw':''}">${fmtR(as.cost_wa_join||0)}</td>

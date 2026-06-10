@@ -30,7 +30,10 @@ function agg(rows, groupKey, extraFields = []) {
   return Object.values(map).map(r => ({
     ...r,
     spent: +r.spent.toFixed(2),
-    cpc:   r.clicks > 0 ? +(r.spent / r.clicks).toFixed(2) : 0,
+    cpc:          r.clicks      > 0 ? +(r.spent / r.clicks).toFixed(2)      : 0,
+    cost_landing: r.landings    > 0 ? +(r.spent / r.landings).toFixed(2)    : 0,
+    cost_visitor: r.ga_visitors > 0 ? +(r.spent / r.ga_visitors).toFixed(2) : 0,
+    cost_wa_join: r.wa_joins    > 0 ? +(r.spent / r.wa_joins).toFixed(2)    : 0,
   })).sort((a, b) => b.spent - a.spent);
 }
 
