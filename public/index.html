@@ -227,7 +227,7 @@ function toYYYYMMDD(d){
 function yesterday(){const d=new Date();d.setDate(d.getDate()-1);return d}
 function daysAgo(n){const d=new Date();d.setDate(d.getDate()-n);return d}
 
-let selStart=daysAgo(30),selEnd=yesterday();
+let selStart=daysAgo(7),selEnd=yesterday();
 let pendStart=null,pendEnd=null,picking=false;
 let leftYear=selStart.getFullYear(),leftMonth=selStart.getMonth();
 
