@@ -38,6 +38,7 @@ export default async function handler(req, res) {
       const key = `${row.campaign_name}__${row.src}`;
       if (!agg[key]) {
         agg[key] = {
+          campaign_id:   row.campaign_id,
           campaign_name: row.campaign_name,
           src:           row.src,
           impressions:   0,
