@@ -99,15 +99,11 @@ tr.tree-adset.row-excluded td:not(.tcb){opacity:0.3}
 tr.tree-last-ad td{border-bottom:1px solid var(--border)}
 
 /* branch indents */
-.branch-adset{display:flex;align-items:center;gap:8px;padding-left:40px;position:relative}
-.branch-adset::before{content:'';position:absolute;left:40px;top:50%;width:10px;height:1px;background:var(--border2);transform:translateY(-50%)}
-.branch-adset::after{content:'';position:absolute;left:40px;top:0;width:1px;height:50%;background:var(--border2)}
-.branch-ad{display:flex;align-items:center;gap:8px;padding-left:72px;position:relative}
-.branch-ad::before{content:'';position:absolute;left:72px;top:50%;width:10px;height:1px;background:var(--border2);transform:translateY(-50%)}
-.branch-ad::after{content:'';position:absolute;left:72px;top:0;width:1px;height:50%;background:var(--border2)}
+.branch-adset{display:flex;align-items:center;gap:8px;padding-left:40px}
+.branch-ad{display:flex;align-items:center;gap:8px;padding-left:72px}
 
 /* chevron toggle for adsets */
-.chev-btn{background:none;border:1px solid var(--border2);border-radius:3px;width:18px;height:18px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;color:var(--t2);flex-shrink:0;transition:all .2s}
+.chev-btn{background:none;border:1px solid var(--border2);border-radius:3px;width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;color:var(--t2);flex-shrink:0;transition:all .2s}
 .chev-btn.open{border-color:var(--t1);color:var(--t1);transform:rotate(180deg)}
 
 /* adset checkbox */
@@ -126,7 +122,7 @@ tr.tree-last-ad td{border-bottom:1px solid var(--border)}
 .row-toggle.off::after{content:'✕';font-size:10px;line-height:1}
 
 /* expand button */
-.expand-btn{width:18px;height:18px;border-radius:3px;border:1.5px solid var(--t3);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;transition:all .2s;background:none;color:var(--t3);user-select:none}
+.expand-btn{width:20px;height:20px;border-radius:3px;border:1.5px solid var(--t3);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;transition:all .2s;background:none;color:var(--t3);user-select:none}
 .expand-btn:hover{border-color:var(--t2);color:var(--t2)}
 .expand-btn.open{border-color:var(--t1);color:var(--t1);transform:rotate(90deg)}
 
@@ -467,7 +463,7 @@ function renderTable(rows){
 
     html+=`<tr class="${isExcluded?'row-excluded':''}">
       <td class="tcb"><div class="row-toggle ${isExcluded?'off':'on'}" onclick="toggleRow('${safeKey}')"></div></td>
-      <td class="tex"><div class="expand-btn ${isExpanded?'open':''}" onclick="toggleExpand('${safeKey}')"><svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3,2 7,5 3,8"/></svg></div></td>
+      <td class="tex"><div class="expand-btn ${isExpanded?'open':''}" onclick="toggleExpand('${safeKey}')"><svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4,2 8,6 4,10"/></svg></div></td>
       <td class="tname">${r.campaign_name}</td>
       <td class="sc"><span class="badge ${r.src==='meta'?'bm':'bgoog'}">${r.src==='meta'?'Meta':'Google'}</span></td>
       <td>${fmtN(dr.impressions)}</td>
@@ -493,8 +489,7 @@ function renderTable(rows){
           html+=`<tr class="tree-adset${asExcluded?' row-excluded':''}">
             <td class="tcb"><input type="checkbox" class="as-cb" ${asExcluded?'':'checked'}
               onchange="toggleAdsetExclude('${asKey}')" onclick="event.stopPropagation()"></td>
-            <td class="tex">${hasAds?`<button class="chev-btn${asExpanded?' open':''}"
-              onclick="toggleAdset('${asKey}')"><svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="2,3.5 5,7 8,3.5"/></svg></button>`:'<span style="display:inline-block;width:18px"></span>'}</td>
+            <td class="tex">${hasAds?`<button class="chev-btn${asExpanded?' open':''}" onclick="toggleAdset('${asKey}')"><svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="2,4 6,8 10,4"/></svg></button>`:'<span style="display:inline-block;width:20px"></span>'}</td>
             <td class="tname"><div class="branch-adset"><span>${as.adset_name}</span></div></td>
             <td></td>
             <td>${fmtN(as.impressions)}</td><td>${fmtN(as.reach)}</td><td>${fmtN(as.clicks)}</td>
