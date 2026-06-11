@@ -91,16 +91,30 @@ tbody tr.row-excluded td:not(.tcb){opacity:0.3}
 .row-total td{background:var(--bg3);font-weight:500;border-top:1px solid var(--border2);border-bottom:none}
 .row-total td.tname{font-family:'Syne',sans-serif;font-size:15px}
 
-/* expand sub-table */
-tr.sub-row td{background:var(--bg3);padding:0;border-bottom:1px solid var(--border)}
-.sub-inner{padding:0 12px 10px 52px}
-.sub-label{font-size:10px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;color:var(--t3);padding:8px 0 4px;font-family:'DM Sans',sans-serif}
-.sub-inner table{font-size:11px}
-.sub-inner thead tr.cols th{font-size:10px;background:var(--bg4)}
-.sub-inner tbody td{border-bottom:1px solid rgba(255,255,255,0.04)}
-.sub-inner tbody tr:last-child td{border-bottom:none}
-.sub-inner tbody tr.ad-row td{color:var(--t2)}
-.sub-inner tbody tr.ad-row td.tname{padding-left:20px}
+/* tree rows — inline in tbody, no sub-table */
+tr.tree-adset td{background:var(--bg3);padding:10px 12px;font-size:14px;border-bottom:1px solid rgba(255,255,255,0.04)}
+tr.tree-ad td{background:#0d0d0d;padding:8px 12px;font-size:13px;color:var(--t2);border-bottom:1px solid rgba(255,255,255,0.03)}
+tr.tree-adset td.tname,tr.tree-ad td.tname{text-align:left;font-family:'DM Sans',sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px}
+tr.tree-adset.row-excluded td:not(.tcb){opacity:0.3}
+tr.tree-last-ad td{border-bottom:1px solid var(--border)}
+
+/* branch indents */
+.branch-adset{display:flex;align-items:center;gap:8px;padding-left:52px;position:relative}
+.branch-adset::before{content:'';position:absolute;left:60px;top:50%;width:12px;height:1px;background:var(--border2)}
+.branch-ad{display:flex;align-items:center;gap:8px;padding-left:84px;position:relative}
+.branch-ad::before{content:'';position:absolute;left:92px;top:50%;width:12px;height:1px;background:var(--border2)}
+
+/* chevron toggle for adsets */
+.chev-btn{background:none;border:1px solid var(--border2);border-radius:50%;width:18px;height:18px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;color:var(--t3);flex-shrink:0;font-size:9px;line-height:1;transition:transform .2s}
+.chev-btn.open{transform:rotate(180deg)}
+
+/* adset checkbox */
+.as-cb{width:13px;height:13px;accent-color:var(--accent);cursor:pointer;flex-shrink:0}
+
+/* skeleton loader */
+.skel{padding:10px 0 8px 52px;display:flex;flex-direction:column;gap:7px}
+.skel-line{height:9px;border-radius:3px;background:linear-gradient(90deg,var(--bg3) 25%,var(--bg2) 50%,var(--bg3) 75%);background-size:200% 100%;animation:shimmer 1.4s infinite}
+@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
 
 /* checkbox toggle */
 .row-toggle{width:16px;height:16px;border-radius:3px;border:1.5px solid var(--t3);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;transition:all .15s;background:none;user-select:none}
@@ -233,6 +247,7 @@ let leftYear=selStart.getFullYear(),leftMonth=selStart.getMonth();
 
 // state
 const excluded=new Set();
+const excludedAdsets=new Set(); // key = adset_id
 const expanded=new Set();
 let cachedRows=[];
 
@@ -325,6 +340,19 @@ function toggleRow(key){
 
 // ─── 3. Expand/collapse ──────────────────────────────────────────────────────
 const drilldownCache = {};
+const expandedAdsets = new Set(); // adset_id whose ads are shown
+
+function toggleAdset(adsetId) {
+  if (expandedAdsets.has(adsetId)) expandedAdsets.delete(adsetId);
+  else expandedAdsets.add(adsetId);
+  renderTable(cachedRows);
+}
+
+function toggleAdsetExclude(adsetId) {
+  if (excludedAdsets.has(adsetId)) excludedAdsets.delete(adsetId);
+  else excludedAdsets.add(adsetId);
+  renderTable(cachedRows);
+}
 
 async function toggleExpand(key) {
   if (expanded.has(key)) {
@@ -412,18 +440,19 @@ function renderTable(rows){
     </tr>`;
 
     if(isExpanded){
-      html+=`<tr class="sub-row"><td colspan="14"><div class="sub-inner">`;
       if(r.adsets&&r.adsets.length){
-        html+=`<div class="sub-label">Ad Sets</div>
-        <table><thead><tr class="cols">
-          <th class="tname">Ad Set</th>
-          <th>Impressions</th><th>Reach</th><th>Clicks</th>
-          <th>Spent (&#8377;)</th><th>CPC (&#8377;)</th><th>&#8377; / Landing</th>
-          <th>Visitors</th><th>&#8377; / Visitor</th><th>WA Joins</th><th>&#8377; / WA Join</th>
-        </tr></thead><tbody>`;
-        r.adsets.forEach(as=>{
-          html+=`<tr>
-            <td class="tname">${as.adset_name}</td>
+        r.adsets.forEach((as,ai)=>{
+          const asKey=as.adset_id;
+          const asExcluded=excludedAdsets.has(asKey);
+          const asExpanded=expandedAdsets.has(asKey);
+          const hasAds=as.ads&&as.ads.length>0;
+          html+=`<tr class="tree-adset${asExcluded?' row-excluded':''}">
+            <td class="tcb"><input type="checkbox" class="as-cb" ${asExcluded?'':'checked'}
+              onchange="toggleAdsetExclude('${asKey}')" onclick="event.stopPropagation()"></td>
+            <td class="tex">${hasAds?`<button class="chev-btn${asExpanded?' open':''}"
+              onclick="toggleAdset('${asKey}')">&#8964;</button>`:'<span style="display:inline-block;width:18px"></span>'}</td>
+            <td class="tname"><div class="branch-adset"><span>${as.adset_name}</span></div></td>
+            <td></td>
             <td>${fmtN(as.impressions)}</td><td>${fmtN(as.reach)}</td><td>${fmtN(as.clicks)}</td>
             <td>${fmtR(as.spent||0)}</td><td>${fmtR(as.cpc||0)}</td>
             <td class="${(as.cost_landing||0)>=WARN_LANDING?'cw':''}">${fmtR(as.cost_landing||0)}</td>
@@ -431,29 +460,51 @@ function renderTable(rows){
             <td>${fmtN(as.wa_joins||0)}</td>
             <td class="${(as.cost_wa_join||0)>=WARN_WA?'cw':''}">${fmtR(as.cost_wa_join||0)}</td>
           </tr>`;
-          if(as.ads&&as.ads.length){
-            as.ads.forEach(ad=>{
-              html+=`<tr class="ad-row">
-                <td class="tname" style="padding-left:20px">&#8627; ${ad.ad_name}</td>
+          if(asExpanded&&hasAds){
+            as.ads.forEach((ad,di)=>{
+              const isLast=di===as.ads.length-1&&ai===r.adsets.length-1;
+              html+=`<tr class="tree-ad${isLast?' tree-last-ad':''}">
+                <td class="tcb"></td><td class="tex"></td>
+                <td class="tname"><div class="branch-ad"><span>${ad.ad_name}</span></div></td>
+                <td></td>
                 <td>${fmtN(ad.impressions)}</td><td>${fmtN(ad.reach)}</td><td>${fmtN(ad.clicks)}</td>
-                <td>${fmtR(ad.spent)}</td><td>${fmtR(ad.cpc)}</td>
-                <td class="${ad.cost_landing>=WARN_LANDING?'cw':''}">${fmtR(ad.cost_landing)}</td>
+                <td>${fmtR(ad.spent||0)}</td><td>${fmtR(ad.cpc||0)}</td>
+                <td class="${(ad.cost_landing||0)>=WARN_LANDING?'cw':''}">${fmtR(ad.cost_landing||0)}</td>
                 <td>—</td><td>—</td><td>—</td><td>—</td>
               </tr>`;
             });
           }
         });
-        html+=`</tbody></table>`;
       }else{
-        html+=`<div style="padding:10px 0;font-size:11px;color:var(--t3)"><span class="spinner"></span> Loading ad sets…</div>`;
+        // skeleton loader
+        html+=`<tr class="tree-adset"><td colspan="14">
+          <div class="skel">
+            <div class="skel-line" style="width:55%"></div>
+            <div class="skel-line" style="width:40%"></div>
+            <div class="skel-line" style="width:48%"></div>
+          </div>
+        </td></tr>`;
       }
-      html+=`</div></td></tr>`;
     }
   });
 
-  // Consolidated (included rows only)
+  // Consolidated — included campaigns minus excluded adsets
   const T={impressions:0,reach:0,clicks:0,spent:0,ga_visitors:0,wa_joins:0};
-  included.forEach(r=>{T.impressions+=r.impressions;T.reach+=r.reach;T.clicks+=r.clicks;T.spent+=r.spent;T.ga_visitors+=r.ga_visitors;T.wa_joins+=r.wa_joins;});
+  included.forEach(r=>{
+    // if campaign has adset data and some adsets are excluded, subtract them
+    if(r.adsets&&r.adsets.length&&excludedAdsets.size>0){
+      const exAdsets=r.adsets.filter(as=>excludedAdsets.has(as.adset_id));
+      T.impressions+=r.impressions - exAdsets.reduce((s,a)=>s+a.impressions,0);
+      T.reach      +=r.reach       - exAdsets.reduce((s,a)=>s+a.reach,0);
+      T.clicks     +=r.clicks      - exAdsets.reduce((s,a)=>s+a.clicks,0);
+      T.spent      +=r.spent       - exAdsets.reduce((s,a)=>s+parseFloat(a.spent||0),0);
+      T.ga_visitors+=r.ga_visitors - exAdsets.reduce((s,a)=>s+a.ga_visitors,0);
+      T.wa_joins   +=r.wa_joins    - exAdsets.reduce((s,a)=>s+a.wa_joins,0);
+    } else {
+      T.impressions+=r.impressions;T.reach+=r.reach;T.clicks+=r.clicks;
+      T.spent+=r.spent;T.ga_visitors+=r.ga_visitors;T.wa_joins+=r.wa_joins;
+    }
+  });
   const t_cpc=T.clicks>0?T.spent/T.clicks:0;
   const t_clnd=T.ga_visitors>0?T.spent/T.ga_visitors:0;
   const t_cwa=T.wa_joins>0?T.spent/T.wa_joins:0;
