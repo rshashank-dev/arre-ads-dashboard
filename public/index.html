@@ -207,7 +207,7 @@ tr.tree-last-ad td{border-bottom:1px solid var(--border)}
         <thead>
           <tr class="grp">
             <th></th><th></th><th></th><th></th>
-            <th colspan="6" class="gm">Meta</th>
+            <th colspan="7" class="gm">Meta</th>
             <th colspan="4" class="gg">GA4</th>
           </tr>
           <tr class="cols">
@@ -216,12 +216,12 @@ tr.tree-last-ad td{border-bottom:1px solid var(--border)}
             <th class="tname">Campaign</th>
             <th class="sh">Src</th>
             <th>Impressions</th><th>Reach</th><th>Clicks</th>
-            <th>Spent (&#8377;)</th><th>CPC (&#8377;)</th><th>&#8377; / Landing</th>
+            <th>Spent (&#8377;)</th><th>CPC (&#8377;)</th><th>Landings</th><th>&#8377; / Landing</th>
             <th>Visitors</th><th>&#8377; / Visitor</th><th>WA Joins</th><th>&#8377; / WA Join</th>
           </tr>
         </thead>
         <tbody id="tbody">
-          <tr><td colspan="14" class="state-loading"><span class="spinner"></span>Loading data...</td></tr>
+          <tr><td colspan="15" class="state-loading"><span class="spinner"></span>Loading data...</td></tr>
         </tbody>
       </table>
     </div>
@@ -394,7 +394,7 @@ async function loadData(){
   // clear drilldown cache on date change
   Object.keys(drilldownCache).forEach(k => delete drilldownCache[k]);
   cachedRows.forEach(r => delete r.adsets);
-  document.getElementById('tbody').innerHTML='<tr><td colspan="14" class="state-loading"><span class="spinner"></span>Loading data...</td></tr>';
+  document.getElementById('tbody').innerHTML='<tr><td colspan="15" class="state-loading"><span class="spinner"></span>Loading data...</td></tr>';
   try{
     const res=await fetch(`/api/campaigns?from=${from}&to=${to}`);
     const json=await res.json();
@@ -402,13 +402,13 @@ async function loadData(){
     cachedRows=json.rows||[];
     renderTable(cachedRows);
   }catch(err){
-    document.getElementById('tbody').innerHTML=`<tr><td colspan="14" class="state-error">Failed to load: ${err.message}</td></tr>`;
+    document.getElementById('tbody').innerHTML=`<tr><td colspan="15" class="state-error">Failed to load: ${err.message}</td></tr>`;
   }
 }
 
 function renderTable(rows){
   if(!rows.length){
-    document.getElementById('tbody').innerHTML='<tr><td colspan="14" class="state-empty">No data for this date range.</td></tr>';
+    document.getElementById('tbody').innerHTML='<tr><td colspan="15" class="state-empty">No data for this date range.</td></tr>';
     updateKPIs([]);return;
   }
 
@@ -475,6 +475,7 @@ function renderTable(rows){
       <td>${fmtN(dr.clicks)}</td>
       <td>${fmtR(dr.spent)}</td>
       <td>${fmtR(dr.cpc)}</td>
+      <td>${fmtN(dr.landings||0)}</td>
       <td class="${dr.cost_landing>=WARN_LANDING?'cw':''}">${fmtR(dr.cost_landing)}</td>
       <td>${fmtN(dr.ga_visitors)}</td>
       <td>${fmtR(dr.cost_visitor)}</td>
@@ -498,6 +499,7 @@ function renderTable(rows){
             <td></td>
             <td>${fmtN(as.impressions)}</td><td>${fmtN(as.reach)}</td><td>${fmtN(as.clicks)}</td>
             <td>${fmtR(as.spent||0)}</td><td>${fmtR(as.cpc||0)}</td>
+            <td>${fmtN(as.landings||0)}</td>
             <td class="${(as.cost_landing||0)>=WARN_LANDING?'cw':''}">${fmtR(as.cost_landing||0)}</td>
             <td>${fmtN(as.ga_visitors||0)}</td><td>${fmtR(as.cost_visitor||0)}</td>
             <td>${fmtN(as.wa_joins||0)}</td>
@@ -512,6 +514,7 @@ function renderTable(rows){
                 <td></td>
                 <td>${fmtN(ad.impressions)}</td><td>${fmtN(ad.reach)}</td><td>${fmtN(ad.clicks)}</td>
                 <td>${fmtR(ad.spent||0)}</td><td>${fmtR(ad.cpc||0)}</td>
+                <td>${fmtN(ad.landings||0)}</td>
                 <td class="${(ad.cost_landing||0)>=WARN_LANDING?'cw':''}">${fmtR(ad.cost_landing||0)}</td>
                 <td>—</td><td>—</td><td>—</td><td>—</td>
               </tr>`;
@@ -520,7 +523,7 @@ function renderTable(rows){
         });
       }else{
         // skeleton loader
-        html+=`<tr class="tree-adset"><td colspan="14">
+        html+=`<tr class="tree-adset"><td colspan="15">
           <div class="skel">
             <div class="skel-line" style="width:55%"></div>
             <div class="skel-line" style="width:40%"></div>
@@ -532,10 +535,10 @@ function renderTable(rows){
   });
 
   // Consolidated — included campaigns minus excluded adsets
-  const T={impressions:0,reach:0,clicks:0,spent:0,ga_visitors:0,wa_joins:0};
+  const T={impressions:0,reach:0,clicks:0,spent:0,ga_visitors:0,wa_joins:0,landings:0};
   includedAdj.forEach(r=>{
     T.impressions+=r.impressions;T.reach+=r.reach;T.clicks+=r.clicks;
-    T.spent+=r.spent;T.ga_visitors+=r.ga_visitors;T.wa_joins+=r.wa_joins;
+    T.spent+=r.spent;T.ga_visitors+=r.ga_visitors;T.wa_joins+=r.wa_joins;T.landings+=(r.landings||0);
   });
   const t_cpc=T.clicks>0?T.spent/T.clicks:0;
   const t_clnd=T.ga_visitors>0?T.spent/T.ga_visitors:0;
@@ -545,7 +548,7 @@ function renderTable(rows){
     <td></td><td></td>
     <td class="tname">Consolidated</td><td></td>
     <td>${fmtN(T.impressions)}</td><td>${fmtN(T.reach)}</td><td>${fmtN(T.clicks)}</td>
-    <td>${fmtR(T.spent)}</td><td>${fmtR(t_cpc)}</td><td>${fmtR(t_clnd)}</td>
+    <td>${fmtR(T.spent)}</td><td>${fmtR(t_cpc)}</td><td>${fmtN(T.landings)}</td><td>${fmtR(t_clnd)}</td>
     <td>${fmtN(T.ga_visitors)}</td><td>&mdash;</td>
     <td>${fmtN(T.wa_joins)}</td><td>${fmtR(t_cwa)}</td>
   </tr>`;
