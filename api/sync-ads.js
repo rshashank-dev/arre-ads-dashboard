@@ -147,7 +147,7 @@ export default async function handler(req, res) {
     if (campaignUpserts.length > 0) {
       const { error } = await supabase
         .from('ads_campaigns')
-        .upsert(campaignUpserts, { onConflict: 'sync_date,campaign_name,src' });
+        .upsert(campaignUpserts, { onConflict: 'sync_date,campaign_id,src' });
       if (error) throw new Error(`Supabase campaigns upsert: ${error.message}`);
     }
 
