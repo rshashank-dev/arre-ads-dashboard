@@ -62,21 +62,20 @@ async function fetchGA4(date) {
   const credentials = JSON.parse(process.env.GA4_SERVICE_ACCOUNT_JSON);
   const client      = new BetaAnalyticsDataClient({ credentials });
 
+  // visitors by campaign
   const [visitorsResp] = await client.runReport({
     property: `properties/${propertyId}`,
     dateRanges: [{ startDate: date, endDate: date }],
     dimensions: [{ name: 'firstUserCampaign' }],
-    metrics:    [{ name: 'activeUsers' }],
+    metrics:    [{ name: 'totalUsers' }],
   });
 
+  // WA joins — same dimension, add eventName as second dimension to filter clicks
   const [waResp] = await client.runReport({
     property: `properties/${propertyId}`,
     dateRanges: [{ startDate: date, endDate: date }],
-    dimensions: [{ name: 'firstUserCampaign' }],
-    metrics:    [{ name: 'activeUsers' }],
-    dimensionFilter: {
-      filter: { fieldName: 'eventName', stringFilter: { matchType: 'EXACT', value: 'click' } },
-    },
+    dimensions: [{ name: 'firstUserCampaign' }, { name: 'eventName' }],
+    metrics:    [{ name: 'eventCount' }],
   });
 
   const visitorsMap = {};
@@ -86,8 +85,11 @@ async function fetchGA4(date) {
   }
   const waMap = {};
   for (const row of waResp.rows || []) {
-    const id = row.dimensionValues[0].value;
-    waMap[id] = (waMap[id] || 0) + parseInt(row.metricValues[0].value, 10);
+    const id        = row.dimensionValues[0].value;
+    const eventName = row.dimensionValues[1].value;
+    if (eventName === 'click') {
+      waMap[id] = (waMap[id] || 0) + parseInt(row.metricValues[0].value, 10);
+    }
   }
   return { visitorsMap, waMap };
 }
