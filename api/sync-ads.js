@@ -72,7 +72,7 @@ async function fetchGA4(date) {
   const [visitorsResp] = await client.runReport({
     property: `properties/${propertyId}`,
     dateRanges: [{ startDate: date, endDate: date }],
-    dimensions: [{ name: 'sessionCampaignId' }],
+    dimensions: [{ name: 'firstUserCampaign' }],
     metrics:    [{ name: 'activeUsers' }],
     dimensionFilter: hostFilter,
   });
@@ -80,14 +80,14 @@ async function fetchGA4(date) {
   const [waResp] = await client.runReport({
     property: `properties/${propertyId}`,
     dateRanges: [{ startDate: date, endDate: date }],
-    dimensions: [{ name: 'sessionCampaignId' }],
+    dimensions: [{ name: 'firstUserCampaign' }],
     metrics:    [{ name: 'activeUsers' }],
     dimensionFilter: {
       andGroup: {
         expressions: [
           hostFilter,
           { filter: { fieldName: 'eventName', stringFilter: { matchType: 'EXACT', value: 'click' } } },
-          { notExpression: { filter: { fieldName: 'sessionCampaignId',
+          { notExpression: { filter: { fieldName: 'firstUserCampaign',
               inListFilter: { values: ['(not set)','(direct)','(none)','(referral)','(organic)'] } } } },
         ],
       },
