@@ -62,19 +62,11 @@ async function fetchGA4(date) {
   const credentials = JSON.parse(process.env.GA4_SERVICE_ACCOUNT_JSON);
   const client      = new BetaAnalyticsDataClient({ credentials });
 
-  const hostFilter = {
-    filter: {
-      fieldName: 'hostName',
-      stringFilter: { matchType: 'EXACT', value: 'docs-teal-mu.vercel.app' },
-    },
-  };
-
   const [visitorsResp] = await client.runReport({
     property: `properties/${propertyId}`,
     dateRanges: [{ startDate: date, endDate: date }],
     dimensions: [{ name: 'firstUserCampaign' }],
     metrics:    [{ name: 'activeUsers' }],
-    dimensionFilter: hostFilter,
   });
 
   const [waResp] = await client.runReport({
@@ -83,12 +75,7 @@ async function fetchGA4(date) {
     dimensions: [{ name: 'firstUserCampaign' }],
     metrics:    [{ name: 'activeUsers' }],
     dimensionFilter: {
-      andGroup: {
-        expressions: [
-          hostFilter,
-          { filter: { fieldName: 'eventName', stringFilter: { matchType: 'EXACT', value: 'click' } } },
-        ],
-      },
+      filter: { fieldName: 'eventName', stringFilter: { matchType: 'EXACT', value: 'click' } },
     },
   });
 
