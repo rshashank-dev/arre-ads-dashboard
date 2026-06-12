@@ -568,7 +568,12 @@ document.addEventListener('DOMContentLoaded',()=>{
 
   leftYear=selStart.getFullYear();
   leftMonth=selStart.getMonth();
-  loadData();
+
+  // silently sync yesterday in the background, then load data
+  const yd=toYYYYMMDD(yesterday());
+  fetch(`/api/sync-ads?date=${yd}`)
+    .catch(()=>{})
+    .finally(()=>loadData());
 });
 </script>
 </body>
