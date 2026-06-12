@@ -72,7 +72,7 @@ async function fetchGA4(date) {
   const [visitorsResp] = await client.runReport({
     property: `properties/${propertyId}`,
     dateRanges: [{ startDate: date, endDate: date }],
-    dimensions: [{ name: 'sessionCampaignName' }],
+    dimensions: [{ name: 'sessionCampaignId' }],
     metrics:    [{ name: 'activeUsers' }],
     dimensionFilter: hostFilter,
   });
@@ -80,14 +80,14 @@ async function fetchGA4(date) {
   const [waResp] = await client.runReport({
     property: `properties/${propertyId}`,
     dateRanges: [{ startDate: date, endDate: date }],
-    dimensions: [{ name: 'sessionCampaignName' }],
+    dimensions: [{ name: 'sessionCampaignId' }],
     metrics:    [{ name: 'activeUsers' }],
     dimensionFilter: {
       andGroup: {
         expressions: [
           hostFilter,
           { filter: { fieldName: 'eventName', stringFilter: { matchType: 'EXACT', value: 'click' } } },
-          { notExpression: { filter: { fieldName: 'sessionCampaignName',
+          { notExpression: { filter: { fieldName: 'sessionCampaignId',
               inListFilter: { values: ['(not set)','(direct)','(none)','(referral)','(organic)'] } } } },
         ],
       },
@@ -96,13 +96,13 @@ async function fetchGA4(date) {
 
   const visitorsMap = {};
   for (const row of visitorsResp.rows || []) {
-    const name = row.dimensionValues[0].value;
-    visitorsMap[name] = (visitorsMap[name] || 0) + parseInt(row.metricValues[0].value, 10);
+    const id = row.dimensionValues[0].value;
+    visitorsMap[id] = (visitorsMap[id] || 0) + parseInt(row.metricValues[0].value, 10);
   }
   const waMap = {};
   for (const row of waResp.rows || []) {
-    const name = row.dimensionValues[0].value;
-    waMap[name] = (waMap[name] || 0) + parseInt(row.metricValues[0].value, 10);
+    const id = row.dimensionValues[0].value;
+    waMap[id] = (waMap[id] || 0) + parseInt(row.metricValues[0].value, 10);
   }
   return { visitorsMap, waMap };
 }
@@ -140,8 +140,8 @@ export default async function handler(req, res) {
       spent:         parseFloat(r.spend     || 0),
       cpc:           parseFloat(r.cpc       || 0),
       landings:      parseLandings(r.actions),
-      ga_visitors:   visitorsMap[r.campaign_name] || 0,
-      wa_joins:      waMap[r.campaign_name]        || 0,
+      ga_visitors:   visitorsMap[r.campaign_id] || 0,
+      wa_joins:      waMap[r.campaign_id]        || 0,
     }));
 
     if (campaignUpserts.length > 0) {
