@@ -43,7 +43,6 @@ async function fetchMetaLevel(date, level) {
 
   const rows = [];
 
-  // follow pagination
   while (url) {
     const res  = await fetch(url);
     const json = await res.json();
@@ -62,12 +61,13 @@ async function fetchGA4(date) {
   const credentials = JSON.parse(process.env.GA4_SERVICE_ACCOUNT_JSON);
   const client      = new BetaAnalyticsDataClient({ credentials });
 
-  // visitors by campaign
+  // ── 1. Visitors by campaign
+  // sessionCampaignName holds the numeric Meta campaign_id (set via utm_campaign)
   const [visitorsResp] = await client.runReport({
     property: `properties/${propertyId}`,
     dateRanges: [{ startDate: date, endDate: date }],
-    dimensions: [{ name: 'firstUserCampaign' }],
-    metrics:    [{ name: 'totalUsers' }],
+    dimensions: [{ name: 'sessionCampaignName' }],
+    metrics:    [{ name: 'activeUsers' }],
   });
 
   const visitorsMap = {};
@@ -76,8 +76,28 @@ async function fetchGA4(date) {
     visitorsMap[id] = (visitorsMap[id] || 0) + parseInt(row.metricValues[0].value, 10);
   }
 
-  // WA joins — TODO: fix dimension scope mismatch
+  // ── 2. WA button click joins by campaign
+  const [waResp] = await client.runReport({
+    property: `properties/${propertyId}`,
+    dateRanges: [{ startDate: date, endDate: date }],
+    dimensions: [{ name: 'sessionCampaignName' }],
+    metrics:    [{ name: 'activeUsers' }],
+    dimensionFilter: {
+      filter: {
+        fieldName: 'eventName',
+        stringFilter: { matchType: 'EXACT', value: 'click' },
+      },
+    },
+  });
+
   const waMap = {};
+  for (const row of waResp.rows || []) {
+    const id = row.dimensionValues[0].value;
+    waMap[id] = (waMap[id] || 0) + parseInt(row.metricValues[0].value, 10);
+  }
+
+  console.log(`[sync-ads] GA4 visitorsMap:`, visitorsMap);
+  console.log(`[sync-ads] GA4 waMap:`, waMap);
 
   return { visitorsMap, waMap };
 }
@@ -93,7 +113,6 @@ export default async function handler(req, res) {
   try {
     console.log(`[sync-ads] Syncing date: ${date}`);
 
-    // Fetch all three levels in parallel along with GA4
     const [campaignRows, adsetRows, adRows, ga4Data] = await Promise.all([
       fetchMetaLevel(date, 'campaign'),
       fetchMetaLevel(date, 'adset'),
@@ -175,14 +194,20 @@ export default async function handler(req, res) {
     }
 
     console.log(`[sync-ads] GA4 visitorsMap keys:`, Object.keys(visitorsMap));
+    console.log(`[sync-ads] GA4 waMap keys:`, Object.keys(waMap));
     console.log(`[sync-ads] Meta campaign_ids:`, campaignRows.map(r => r.campaign_id));
-    console.log(`[sync-ads] Meta campaign_names:`, campaignRows.map(r => r.campaign_name));
     console.log(`[sync-ads] Done: ${campaignUpserts.length} campaigns, ${adsetUpserts.length} adsets, ${adUpserts.length} ads`);
+
     return res.status(200).json({
       success: true, date,
       campaigns: campaignUpserts.length,
       adsets:    adsetUpserts.length,
       ads:       adUpserts.length,
+      ga4_debug: {
+        visitor_keys: Object.keys(visitorsMap),
+        wa_keys:      Object.keys(waMap),
+        meta_ids:     campaignRows.map(r => r.campaign_id),
+      }
     });
 
   } catch (err) {
