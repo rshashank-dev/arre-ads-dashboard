@@ -87,8 +87,6 @@ async function fetchGA4(date) {
         expressions: [
           hostFilter,
           { filter: { fieldName: 'eventName', stringFilter: { matchType: 'EXACT', value: 'click' } } },
-          { notExpression: { filter: { fieldName: 'firstUserCampaign',
-              stringFilter: { matchType: 'EXACT', value: '(not set)' } } } },
         ],
       },
     },
