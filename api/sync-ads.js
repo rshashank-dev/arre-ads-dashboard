@@ -96,13 +96,13 @@ async function fetchGA4(date) {
 
   const visitorsMap = {};
   for (const row of visitorsResp.rows || []) {
-    const id = row.dimensionValues[0].value;
-    visitorsMap[id] = (visitorsMap[id] || 0) + parseInt(row.metricValues[0].value, 10);
+    const name = row.dimensionValues[0].value;
+    visitorsMap[name] = (visitorsMap[name] || 0) + parseInt(row.metricValues[0].value, 10);
   }
   const waMap = {};
   for (const row of waResp.rows || []) {
-    const id = row.dimensionValues[0].value;
-    waMap[id] = (waMap[id] || 0) + parseInt(row.metricValues[0].value, 10);
+    const name = row.dimensionValues[0].value;
+    waMap[name] = (waMap[name] || 0) + parseInt(row.metricValues[0].value, 10);
   }
   return { visitorsMap, waMap };
 }
@@ -140,8 +140,8 @@ export default async function handler(req, res) {
       spent:         parseFloat(r.spend     || 0),
       cpc:           parseFloat(r.cpc       || 0),
       landings:      parseLandings(r.actions),
-      ga_visitors:   visitorsMap[r.campaign_id] || 0,
-      wa_joins:      waMap[r.campaign_id]        || 0,
+      ga_visitors:   visitorsMap[r.campaign_name] || 0,
+      wa_joins:      waMap[r.campaign_name]        || 0,
     }));
 
     if (campaignUpserts.length > 0) {
@@ -199,6 +199,9 @@ export default async function handler(req, res) {
       if (error) throw new Error(`Supabase ads upsert: ${error.message}`);
     }
 
+    console.log(`[sync-ads] GA4 visitorsMap keys:`, Object.keys(visitorsMap));
+    console.log(`[sync-ads] Meta campaign_ids:`, campaignRows.map(r => r.campaign_id));
+    console.log(`[sync-ads] Meta campaign_names:`, campaignRows.map(r => r.campaign_name));
     console.log(`[sync-ads] Done: ${campaignUpserts.length} campaigns, ${adsetUpserts.length} adsets, ${adUpserts.length} ads`);
     return res.status(200).json({
       success: true, date,
