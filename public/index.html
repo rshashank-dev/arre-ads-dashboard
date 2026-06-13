@@ -130,6 +130,10 @@ tr.tree-last-ad td{border-bottom:1px solid var(--border)}
 .badge{display:inline-block;font-size:10px;font-weight:500;padding:2px 7px;border-radius:4px}
 .bm{background:var(--meta-bg);color:var(--meta)}
 .bgoog{background:rgba(217,119,6,0.12);color:#fbbf24}
+.status-badge{display:inline-block;padding:2px 7px;border-radius:3px;font-size:11px;font-weight:500;font-family:'DM Mono',monospace;letter-spacing:.03em}
+.status-active{background:rgba(0,200,100,.12);color:#00c864}
+.status-paused{background:rgba(255,180,0,.12);color:#ffb400}
+.status-other{background:rgba(150,150,150,.12);color:var(--t3)}
 .cw{color:var(--warn)}
 .cgood{color:var(--good)}
 
@@ -202,7 +206,7 @@ tr.tree-last-ad td{border-bottom:1px solid var(--border)}
       <table>
         <thead>
           <tr class="grp">
-            <th></th><th></th><th></th><th></th>
+            <th></th><th></th><th></th><th></th><th></th>
             <th colspan="7" class="gm">Meta</th>
             <th colspan="4" class="gg">GA4</th>
           </tr>
@@ -210,14 +214,15 @@ tr.tree-last-ad td{border-bottom:1px solid var(--border)}
             <th class="tcb"></th>
             <th class="tex"></th>
             <th class="tname">Campaign</th>
-            <th class="sh">Src</th>
+            <th class="sh">Status</th>
+            <th class="sh">Platform</th>
             <th>Impressions</th><th>Reach</th><th>Clicks</th>
             <th>Spent (&#8377;)</th><th>CPC (&#8377;)</th><th>Landings</th><th>&#8377; / Landing</th>
             <th>Visitors</th><th>&#8377; / Visitor</th><th>WA Joins</th><th>&#8377; / WA Join</th>
           </tr>
         </thead>
         <tbody id="tbody">
-          <tr><td colspan="15" class="state-loading"><span class="spinner"></span>Loading data...</td></tr>
+          <tr><td colspan="16" class="state-loading"><span class="spinner"></span>Loading data...</td></tr>
         </tbody>
       </table>
     </div>
@@ -390,7 +395,7 @@ async function loadData(){
   // clear drilldown cache on date change
   Object.keys(drilldownCache).forEach(k => delete drilldownCache[k]);
   cachedRows.forEach(r => delete r.adsets);
-  document.getElementById('tbody').innerHTML='<tr><td colspan="15" class="state-loading"><span class="spinner"></span>Loading data...</td></tr>';
+  document.getElementById('tbody').innerHTML='<tr><td colspan="16" class="state-loading"><span class="spinner"></span>Loading data...</td></tr>';
   try{
     const res=await fetch(`/api/campaigns?from=${from}&to=${to}`);
     const json=await res.json();
@@ -398,13 +403,13 @@ async function loadData(){
     cachedRows=json.rows||[];
     renderTable(cachedRows);
   }catch(err){
-    document.getElementById('tbody').innerHTML=`<tr><td colspan="15" class="state-error">Failed to load: ${err.message}</td></tr>`;
+    document.getElementById('tbody').innerHTML=`<tr><td colspan="16" class="state-error">Failed to load: ${err.message}</td></tr>`;
   }
 }
 
 function renderTable(rows){
   if(!rows.length){
-    document.getElementById('tbody').innerHTML='<tr><td colspan="15" class="state-empty">No data for this date range.</td></tr>';
+    document.getElementById('tbody').innerHTML='<tr><td colspan="16" class="state-empty">No data for this date range.</td></tr>';
     updateKPIs([]);return;
   }
 
@@ -465,6 +470,7 @@ function renderTable(rows){
       <td class="tcb"><div class="row-toggle ${isExcluded?'off':'on'}" onclick="toggleRow('${safeKey}')"></div></td>
       <td class="tex"><div class="expand-btn ${isExpanded?'open':''}" onclick="toggleExpand('${safeKey}')"><svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4,2 8,6 4,10"/></svg></div></td>
       <td class="tname">${r.campaign_name}</td>
+      <td class="sc"><span class="status-badge ${r.status==='ACTIVE'?'status-active':r.status==='PAUSED'?'status-paused':'status-other'}">${r.status==='ACTIVE'?'Active':r.status==='PAUSED'?'Paused':r.status||'—'}</span></td>
       <td class="sc"><span class="badge ${r.src==='meta'?'bm':'bgoog'}">${r.src==='meta'?'Meta':'Google'}</span></td>
       <td>${fmtN(dr.impressions)}</td>
       <td>${fmtN(dr.reach)}</td>
@@ -518,7 +524,7 @@ function renderTable(rows){
         });
       }else{
         // skeleton loader
-        html+=`<tr class="tree-adset"><td colspan="15">
+        html+=`<tr class="tree-adset"><td colspan="16">
           <div class="skel">
             <div class="skel-line" style="width:55%"></div>
             <div class="skel-line" style="width:40%"></div>
@@ -541,7 +547,7 @@ function renderTable(rows){
 
   html+=`<tr class="row-total">
     <td></td><td></td>
-    <td class="tname">Consolidated</td><td></td>
+    <td class="tname">Consolidated</td><td></td><td></td>
     <td>${fmtN(T.impressions)}</td><td>${fmtN(T.reach)}</td><td>${fmtN(T.clicks)}</td>
     <td>${fmtR(T.spent)}</td><td>${fmtR(t_cpc)}</td><td>${fmtN(T.landings)}</td><td>${fmtR(t_clnd)}</td>
     <td>${fmtN(T.ga_visitors)}</td><td>&mdash;</td>

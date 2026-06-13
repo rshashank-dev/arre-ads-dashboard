@@ -1,6 +1,6 @@
 // api/campaigns.js
 // Dashboard calls GET /api/campaigns?from=YYYY-MM-DD&to=YYYY-MM-DD
-// Returns aggregated campaign rows for the date range
+// Returns aggregated campaign rows for the date range + live status from Meta
 
 import { createClient } from '@supabase/supabase-js';
 
@@ -8,6 +8,25 @@ const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_SERVICE_KEY
 );
+
+async function fetchMetaStatuses() {
+  const token     = process.env.META_ACCESS_TOKEN;
+  const accountId = process.env.META_AD_ACCOUNT_ID;
+  const url = `https://graph.facebook.com/v19.0/act_${accountId}/campaigns`
+    + `?fields=id,effective_status`
+    + `&limit=500`
+    + `&access_token=${token}`;
+
+  const res  = await fetch(url);
+  const json = await res.json();
+  if (json.error) throw new Error(`Meta status error: ${json.error.message}`);
+
+  const map = {};
+  for (const c of json.data || []) {
+    map[c.id] = c.effective_status; // ACTIVE, PAUSED, ARCHIVED, etc.
+  }
+  return map;
+}
 
 export default async function handler(req, res) {
   // CORS — allow dashboard to call this
@@ -23,12 +42,15 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { data, error } = await supabase
-      .from('ads_campaigns')
-      .select('*')
-      .gte('sync_date', from)
-      .lte('sync_date', to)
-      .order('sync_date', { ascending: false });
+    const [{ data, error }, statusMap] = await Promise.all([
+      supabase
+        .from('ads_campaigns')
+        .select('*')
+        .gte('sync_date', from)
+        .lte('sync_date', to)
+        .order('sync_date', { ascending: false }),
+      fetchMetaStatuses().catch(() => ({})),
+    ]);
 
     if (error) throw new Error(error.message);
 
@@ -70,6 +92,7 @@ export default async function handler(req, res) {
       cost_landing: r.landings > 0 ? +(r.spent / r.landings).toFixed(2)    : 0,
       cost_visitor: r.ga_visitors > 0 ? +(r.spent / r.ga_visitors).toFixed(2) : 0,
       cost_wa_join: r.wa_joins > 0 ? +(r.spent / r.wa_joins).toFixed(2)    : 0,
+      status: statusMap[r.campaign_id] || 'UNKNOWN',
     }));
 
     // Sort by spent desc
