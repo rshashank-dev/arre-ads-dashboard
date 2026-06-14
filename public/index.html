@@ -234,7 +234,7 @@ tr.tree-last-ad td{border-bottom:1px solid var(--border)}
 <script>
 const MONTHS=["January","February","March","April","May","June","July","August","September","October","November","December"];
 const DAYS=["S","M","T","W","T","F","S"];
-const WARN_LANDING=2.0,WARN_WA=50;
+const WARN_LANDING=2.0, WARN_WA=50, GOOD_WA=10, WARN_CPC=1.0, GOOD_CPC=0.4, WARN_VISITOR=2.0, GOOD_VISITOR=0.8;
 
 // timezone-safe date
 function toYYYYMMDD(d){
@@ -476,13 +476,13 @@ function renderTable(rows){
       <td>${fmtN(dr.reach)}</td>
       <td>${fmtN(dr.clicks)}</td>
       <td>${fmtR(dr.spent)}</td>
-      <td>${fmtR(dr.cpc)}</td>
+      <td class="${dr.cpc>=WARN_CPC?'cw':dr.cpc>0&&dr.cpc<=GOOD_CPC?'cgood':''}">${fmtR(dr.cpc)}</td>
       <td>${fmtN(dr.landings||0)}</td>
       <td class="${dr.cost_landing>=WARN_LANDING?'cw':''}">${fmtR(dr.cost_landing)}</td>
       <td>${fmtN(dr.ga_visitors)}</td>
-      <td>${fmtR(dr.cost_visitor)}</td>
+      <td class="${dr.cost_visitor>=WARN_VISITOR?'cw':dr.cost_visitor>0&&dr.cost_visitor<=GOOD_VISITOR?'cgood':''}">${fmtR(dr.cost_visitor)}</td>
       <td>${fmtN(dr.wa_joins)}</td>
-      <td class="${dr.cost_wa_join>=WARN_WA?'cw':dr.cost_wa_join>0&&dr.cost_wa_join<=10?'cgood':''}">${fmtR(dr.cost_wa_join)}</td>
+      <td class="${dr.cost_wa_join>=WARN_WA?'cw':dr.cost_wa_join>0&&dr.cost_wa_join<=GOOD_WA?'cgood':''}">${fmtR(dr.cost_wa_join)}</td>
     </tr>`;
 
     if(isExpanded){
@@ -499,12 +499,13 @@ function renderTable(rows){
             <td class="tname"><div class="branch-adset"><span>${as.adset_name}</span></div></td>
             <td></td>
             <td>${fmtN(as.impressions)}</td><td>${fmtN(as.reach)}</td><td>${fmtN(as.clicks)}</td>
-            <td>${fmtR(as.spent||0)}</td><td>${fmtR(as.cpc||0)}</td>
+            <td>${fmtR(as.spent||0)}</td>
+            <td class="${(as.cpc||0)>=WARN_CPC?'cw':(as.cpc||0)>0&&(as.cpc||0)<=GOOD_CPC?'cgood':''}">${fmtR(as.cpc||0)}</td>
             <td>${fmtN(as.landings||0)}</td>
             <td class="${(as.cost_landing||0)>=WARN_LANDING?'cw':''}">${fmtR(as.cost_landing||0)}</td>
             <td>${fmtN(as.ga_visitors||0)}</td><td>${fmtR(as.cost_visitor||0)}</td>
             <td>${fmtN(as.wa_joins||0)}</td>
-            <td class="${(as.cost_wa_join||0)>=WARN_WA?'cw':''}">${fmtR(as.cost_wa_join||0)}</td>
+            <td class="${(as.cost_wa_join||0)>=WARN_WA?'cw':(as.cost_wa_join||0)>0&&(as.cost_wa_join||0)<=GOOD_WA?'cgood':''}">${fmtR(as.cost_wa_join||0)}</td>
           </tr>`;
           if(asExpanded&&hasAds){
             as.ads.forEach((ad,di)=>{
@@ -514,7 +515,8 @@ function renderTable(rows){
                 <td class="tname"><div class="branch-ad"><span>${ad.ad_name}</span></div></td>
                 <td></td>
                 <td>${fmtN(ad.impressions)}</td><td>${fmtN(ad.reach)}</td><td>${fmtN(ad.clicks)}</td>
-                <td>${fmtR(ad.spent||0)}</td><td>${fmtR(ad.cpc||0)}</td>
+                <td>${fmtR(ad.spent||0)}</td>
+                <td class="${(ad.cpc||0)>=WARN_CPC?'cw':(ad.cpc||0)>0&&(ad.cpc||0)<=GOOD_CPC?'cgood':''}">${fmtR(ad.cpc||0)}</td>
                 <td>${fmtN(ad.landings||0)}</td>
                 <td class="${(ad.cost_landing||0)>=WARN_LANDING?'cw':''}">${fmtR(ad.cost_landing||0)}</td>
                 <td>—</td><td>—</td><td>—</td><td>—</td>
