@@ -66,20 +66,20 @@ body{background:var(--bg);color:var(--t1);font-family:'DM Sans',sans-serif;font-
 table{width:100%;border-collapse:collapse;font-size:15px}
 
 /* table header — extra cols for checkbox + expand */
-thead tr.grp th{padding:5px 12px;font-size:11px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;border-bottom:1px solid var(--border);text-align:center;background:var(--bg2)}
+thead tr.grp th{padding:4px 8px;font-size:10px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;border-bottom:1px solid var(--border);text-align:center;background:var(--bg2)}
 thead tr.grp th.gm{background:var(--meta-bg);color:var(--meta)}
 thead tr.grp th.gg{background:var(--ga-bg);color:var(--ga)}
-thead tr.cols th{padding:8px 12px;text-align:right;font-size:17px;font-weight:500;color:var(--t3);background:var(--bg3);border-bottom:1px solid var(--border);white-space:nowrap}
+thead tr.cols th{padding:7px 8px;text-align:right;font-size:13px;font-weight:500;color:var(--t3);background:var(--bg3);border-bottom:1px solid var(--border);white-space:nowrap}
 thead tr.cols th.tcb{width:28px;text-align:center}
 thead tr.cols th.tex{width:28px;text-align:center}
 thead tr.cols th.tname{text-align:left}
 thead tr.cols th.sh{text-align:center;width:52px}
 
 /* tbody */
-tbody td{padding:10px 12px;text-align:right;color:var(--t1);border-bottom:1px solid var(--border);font-family:'DM Mono',monospace;font-size:15px;white-space:nowrap}
-tbody td.tcb{text-align:center;padding:10px 6px;width:28px}
-tbody td.tex{text-align:center;padding:10px 6px;width:28px}
-tbody td.tname{text-align:left;font-family:'DM Sans',sans-serif;font-size:15px;max-width:160px;white-space:normal;word-break:break-word;line-height:1.3}
+tbody td{padding:9px 8px;text-align:right;color:var(--t1);border-bottom:1px solid var(--border);font-family:'DM Mono',monospace;font-size:13px;white-space:nowrap}
+tbody td.tcb{text-align:center;padding:9px 4px;width:24px}
+tbody td.tex{text-align:center;padding:9px 4px;width:24px}
+tbody td.tname{text-align:left;font-family:'DM Sans',sans-serif;font-size:13px;max-width:130px;white-space:normal;word-break:break-word;line-height:1.3}
 tbody td.sc{text-align:center;font-family:'DM Sans',sans-serif;white-space:nowrap}
 tbody tr:last-child td{border-bottom:none}
 tbody tr:hover td{background:var(--bg3)}
@@ -130,7 +130,7 @@ tr.tree-last-ad td{border-bottom:1px solid var(--border)}
 .badge{display:inline-block;font-size:10px;font-weight:500;padding:2px 7px;border-radius:4px}
 .bm{background:var(--meta-bg);color:var(--meta)}
 .bgoog{background:rgba(217,119,6,0.12);color:#fbbf24}
-.status-badge{display:inline-block;padding:2px 7px;border-radius:3px;font-size:11px;font-weight:500;font-family:'DM Mono',monospace;letter-spacing:.03em}
+.status-badge{display:inline-block;padding:2px 5px;border-radius:3px;font-size:10px;font-weight:500;font-family:'DM Mono',monospace;letter-spacing:.03em}
 .status-active{background:rgba(0,200,100,.12);color:#00c864}
 .status-paused{background:rgba(255,180,0,.12);color:#ffb400}
 .status-other{background:rgba(150,150,150,.12);color:var(--t3)}
@@ -544,7 +544,8 @@ function renderTable(rows){
     T.spent+=r.spent;T.ga_visitors+=r.ga_visitors;T.wa_joins+=r.wa_joins;T.landings+=(r.landings||0);
   });
   const t_cpc=T.clicks>0?T.spent/T.clicks:0;
-  const t_clnd=T.ga_visitors>0?T.spent/T.ga_visitors:0;
+  const t_clnd=T.landings>0?T.spent/T.landings:0;
+  const t_visitor=T.ga_visitors>0?T.spent/T.ga_visitors:0;
   const t_cwa=T.wa_joins>0?T.spent/T.wa_joins:0;
 
   html+=`<tr class="row-total">
@@ -552,7 +553,7 @@ function renderTable(rows){
     <td class="tname">Consolidated</td><td></td><td></td>
     <td>${fmtN(T.impressions)}</td><td>${fmtN(T.reach)}</td><td>${fmtN(T.clicks)}</td>
     <td>${fmtR(T.spent)}</td><td>${fmtR(t_cpc)}</td><td>${fmtN(T.landings)}</td><td>${fmtR(t_clnd)}</td>
-    <td>${fmtN(T.ga_visitors)}</td><td>&mdash;</td>
+    <td>${fmtN(T.ga_visitors)}</td><td>${fmtR(t_visitor)}</td>
     <td>${fmtN(T.wa_joins)}</td><td>${fmtR(t_cwa)}</td>
   </tr>`;
 
