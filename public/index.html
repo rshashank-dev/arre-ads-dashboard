@@ -76,7 +76,7 @@ thead tr.cols th.tname{text-align:left}
 thead tr.cols th.sh{text-align:center;width:52px}
 
 /* tbody */
-tbody td{padding:9px 8px;text-align:right;color:var(--t1);border-bottom:1px solid var(--border);font-family:'DM Mono',monospace;font-size:13px;white-space:nowrap}
+tbody td{padding:11px 8px;text-align:right;color:var(--t1);border-bottom:1px solid var(--border);font-family:'DM Mono',monospace;font-size:13px;white-space:nowrap;vertical-align:middle}
 tbody td.tcb{text-align:center;padding:9px 4px;width:24px}
 tbody td.tex{text-align:center;padding:9px 4px;width:24px}
 tbody td.tname{text-align:left;font-family:'DM Sans',sans-serif;font-size:13px;max-width:130px;white-space:normal;word-break:break-word;line-height:1.3}
@@ -479,7 +479,7 @@ function renderTable(rows){
       <td>${fmtN(dr.clicks)}</td>
       <td>${fmtR(dr.spent)}</td>
       <td class="${dr.cpc>=WARN_CPC?'cw':dr.cpc>0&&dr.cpc<=GOOD_CPC?'cgood':''}">${fmtR(dr.cpc)}</td>
-      <td>${fmtN(dr.landings||0)}<br><span style="font-size:10px;color:var(--t3)">${resultLabel(r.result_type)}</span></td>
+      <td style="vertical-align:middle">${fmtN(dr.landings||0)}<br><span style="font-size:10px;color:var(--t3);line-height:1.8">${resultLabel(r.result_type)}</span></td>
       <td class="${dr.cost_landing>=WARN_LANDING?'cw':''}">${fmtR(dr.cost_landing)}</td>
       <td>${fmtN(dr.ga_visitors)}</td>
       <td class="${dr.cost_visitor>=WARN_VISITOR?'cw':dr.cost_visitor>0&&dr.cost_visitor<=GOOD_VISITOR?'cgood':''}">${fmtR(dr.cost_visitor)}</td>
