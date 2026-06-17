@@ -73,6 +73,62 @@ async function fetchMetaLevel(date, level) {
 
 // ── GA4 ───────────────────────────────────────────────────────────────────────
 
+// PRIMARY WA query — mirrors the "Whatsapp Button Clicks" GA4 report exactly:
+// dimension firstUserCampaign, metric activeUsers, filter eventName == 'click'.
+// firstUserCampaign is USER-scoped; combining it with an event-scoped eventName
+// filter is what the Data API rejects with INVALID_ARGUMENT (the report UI tolerates
+// it, runReport does not). We try it anyway — if a future API change accepts it,
+// great — and fall back when it throws.
+async function fetchWAPrimary(client, propertyId, date) {
+  const [resp] = await client.runReport({
+    property: `properties/${propertyId}`,
+    dateRanges: [{ startDate: date, endDate: date }],
+    dimensions: [{ name: 'firstUserCampaign' }],
+    metrics:    [{ name: 'activeUsers' }],
+    dimensionFilter: {
+      andGroup: {
+        expressions: [
+          { filter: { fieldName: 'eventName',
+                      stringFilter: { matchType: 'EXACT', value: 'click' } } },
+          { notExpression: { filter: { fieldName: 'firstUserCampaign',
+                      inListFilter: { values: ['(referral)', '(direct)', '(organic)'] } } } },
+        ],
+      },
+    },
+  });
+
+  const map = {};
+  for (const row of resp.rows || []) {
+    const id = row.dimensionValues[0].value;
+    if (/^\d+$/.test(id)) map[id] = (map[id] || 0) + parseInt(row.metricValues[0].value, 10);
+  }
+  return map;
+}
+
+// FALLBACK WA query — scope-safe. sessionCampaignName (session-scoped) + eventName
+// as a DIMENSION (not a filter), metric eventCount (event-scoped). No cross-scope
+// dimensionFilter, so the Data API accepts it. We filter to the 'click' event in JS.
+// sessionCampaignName carries the same numeric utm_campaign id as firstUserCampaign
+// in this property (that's why the visitors query already joins on it).
+async function fetchWAFallback(client, propertyId, date) {
+  const [resp] = await client.runReport({
+    property: `properties/${propertyId}`,
+    dateRanges: [{ startDate: date, endDate: date }],
+    dimensions: [{ name: 'sessionCampaignName' }, { name: 'eventName' }],
+    metrics:    [{ name: 'eventCount' }],
+  });
+
+  const map = {};
+  for (const row of resp.rows || []) {
+    const id        = row.dimensionValues[0].value;
+    const eventName = row.dimensionValues[1].value;
+    if (eventName !== 'click') continue;
+    if (!/^\d+$/.test(id)) continue;
+    map[id] = (map[id] || 0) + parseInt(row.metricValues[0].value, 10);
+  }
+  return map;
+}
+
 async function fetchGA4(date) {
   const propertyId  = process.env.GA4_PROPERTY_ID;
   const credentials = JSON.parse(process.env.GA4_SERVICE_ACCOUNT_JSON);
@@ -92,45 +148,36 @@ async function fetchGA4(date) {
     visitorsMap[id] = (visitorsMap[id] || 0) + parseInt(row.metricValues[0].value, 10);
   }
 
-  // ── WA joins — mirrors the "Whatsapp Button Clicks" GA4 report ──
-  // dimension: firstUserCampaign (returns numeric Meta campaign IDs that match campaign_id)
-  // metric:    activeUsers
-  // filter:    eventName == 'click'  AND firstUserCampaign NOT IN (referral/direct/organic)
-  //
-  // Run as its OWN runReport call — bolting this filter onto the visitors query
-  // is what previously triggered GA4 INVALID_ARGUMENT. Wrapped in try/catch so a
-  // GA4 failure can never take down the whole Meta sync.
-  const waMap = {};
-  try {
-    const [waResp] = await client.runReport({
-      property: `properties/${propertyId}`,
-      dateRanges: [{ startDate: date, endDate: date }],
-      dimensions: [{ name: 'firstUserCampaign' }],
-      metrics:    [{ name: 'activeUsers' }],
-      dimensionFilter: {
-        andGroup: {
-          expressions: [
-            { filter: { fieldName: 'eventName',
-                        stringFilter: { matchType: 'EXACT', value: 'click' } } },
-            { notExpression: { filter: { fieldName: 'firstUserCampaign',
-                        inListFilter: { values: ['(referral)', '(direct)', '(organic)'] } } } },
-          ],
-        },
-      },
-    });
+  // ── WA joins: primary, then scope-safe fallback ──
+  let waMap = {};
+  let waMethod = 'none';
+  let waPrimaryError = null;
 
-    for (const row of waResp.rows || []) {
-      const id = row.dimensionValues[0].value;          // numeric Meta campaign_id
-      if (/^\d+$/.test(id)) {                           // keep only numeric campaign IDs
-        waMap[id] = (waMap[id] || 0) + parseInt(row.metricValues[0].value, 10);
-      }
-    }
+  try {
+    waMap = await fetchWAPrimary(client, propertyId, date);
+    waMethod = 'firstUserCampaign+eventNameFilter';
   } catch (err) {
-    console.error('[sync-ads] WA joins GA4 query failed:', err.message);
+    waPrimaryError = err.message;
+    try {
+      waMap = await fetchWAFallback(client, propertyId, date);
+      waMethod = 'sessionCampaignName+eventNameDimension(fallback)';
+    } catch (err2) {
+      waPrimaryError = `${err.message} || fallback: ${err2.message}`;
+      waMethod = 'failed';
+      waMap = {};
+    }
   }
 
-  console.log('[sync-ads] GA4 waMap:', JSON.stringify(waMap));
-  return { visitorsMap, waMap };
+  const ga4_debug = {
+    date,
+    visitorsKeys: Object.keys(visitorsMap),
+    waMethod,
+    waPrimaryError,
+    waMap,
+  };
+
+  console.log('[sync-ads] ga4_debug:', JSON.stringify(ga4_debug));
+  return { visitorsMap, waMap, ga4_debug };
 }
 
 // ── main handler ──────────────────────────────────────────────────────────────
@@ -152,7 +199,7 @@ export default async function handler(req, res) {
       fetchGA4(date),
     ]);
 
-    const { visitorsMap, waMap } = ga4Data;
+    const { visitorsMap, waMap, ga4_debug } = ga4Data;
 
     // ── 1. Upsert campaigns ──
     const campaignUpserts = campaignRows.map(r => ({
@@ -226,16 +273,13 @@ export default async function handler(req, res) {
       if (error) throw new Error(`Supabase ads upsert: ${error.message}`);
     }
 
-    console.log(`[sync-ads] GA4 visitorsMap keys:`, Object.keys(visitorsMap));
-    console.log(`[sync-ads] GA4 waMap keys:`, Object.keys(waMap));
-    console.log(`[sync-ads] Meta campaign_ids:`, campaignRows.map(r => r.campaign_id));
-    console.log(`[sync-ads] Meta campaign_names:`, campaignRows.map(r => r.campaign_name));
     console.log(`[sync-ads] Done: ${campaignUpserts.length} campaigns, ${adsetUpserts.length} adsets, ${adUpserts.length} ads`);
     return res.status(200).json({
       success: true, date,
       campaigns: campaignUpserts.length,
       adsets:    adsetUpserts.length,
       ads:       adUpserts.length,
+      ga4_debug,   // <- read this from the live endpoint to see exactly what WA returned
     });
 
   } catch (err) {
