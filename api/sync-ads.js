@@ -78,7 +78,7 @@ async function fetchGA4(date) {
   const credentials = JSON.parse(process.env.GA4_SERVICE_ACCOUNT_JSON);
   const client      = new BetaAnalyticsDataClient({ credentials });
 
-  // visitors by campaign
+  // ── visitors by campaign ──
   const [visitorsResp] = await client.runReport({
     property: `properties/${propertyId}`,
     dateRanges: [{ startDate: date, endDate: date }],
@@ -92,7 +92,44 @@ async function fetchGA4(date) {
     visitorsMap[id] = (visitorsMap[id] || 0) + parseInt(row.metricValues[0].value, 10);
   }
 
+  // ── WA joins — mirrors the "Whatsapp Button Clicks" GA4 report ──
+  // dimension: firstUserCampaign (returns numeric Meta campaign IDs that match campaign_id)
+  // metric:    activeUsers
+  // filter:    eventName == 'click'  AND firstUserCampaign NOT IN (referral/direct/organic)
+  //
+  // Run as its OWN runReport call — bolting this filter onto the visitors query
+  // is what previously triggered GA4 INVALID_ARGUMENT. Wrapped in try/catch so a
+  // GA4 failure can never take down the whole Meta sync.
   const waMap = {};
+  try {
+    const [waResp] = await client.runReport({
+      property: `properties/${propertyId}`,
+      dateRanges: [{ startDate: date, endDate: date }],
+      dimensions: [{ name: 'firstUserCampaign' }],
+      metrics:    [{ name: 'activeUsers' }],
+      dimensionFilter: {
+        andGroup: {
+          expressions: [
+            { filter: { fieldName: 'eventName',
+                        stringFilter: { matchType: 'EXACT', value: 'click' } } },
+            { notExpression: { filter: { fieldName: 'firstUserCampaign',
+                        inListFilter: { values: ['(referral)', '(direct)', '(organic)'] } } } },
+          ],
+        },
+      },
+    });
+
+    for (const row of waResp.rows || []) {
+      const id = row.dimensionValues[0].value;          // numeric Meta campaign_id
+      if (/^\d+$/.test(id)) {                           // keep only numeric campaign IDs
+        waMap[id] = (waMap[id] || 0) + parseInt(row.metricValues[0].value, 10);
+      }
+    }
+  } catch (err) {
+    console.error('[sync-ads] WA joins GA4 query failed:', err.message);
+  }
+
+  console.log('[sync-ads] GA4 waMap:', JSON.stringify(waMap));
   return { visitorsMap, waMap };
 }
 
@@ -190,6 +227,7 @@ export default async function handler(req, res) {
     }
 
     console.log(`[sync-ads] GA4 visitorsMap keys:`, Object.keys(visitorsMap));
+    console.log(`[sync-ads] GA4 waMap keys:`, Object.keys(waMap));
     console.log(`[sync-ads] Meta campaign_ids:`, campaignRows.map(r => r.campaign_id));
     console.log(`[sync-ads] Meta campaign_names:`, campaignRows.map(r => r.campaign_name));
     console.log(`[sync-ads] Done: ${campaignUpserts.length} campaigns, ${adsetUpserts.length} adsets, ${adUpserts.length} ads`);
