@@ -82,7 +82,7 @@ async function fetchGA4(date) {
   const [visitorsResp] = await client.runReport({
     property: `properties/${propertyId}`,
     dateRanges: [{ startDate: date, endDate: date }],
-    dimensions: [{ name: 'firstUserCampaign' }],
+    dimensions: [{ name: 'firstUserCampaignId' }],
     metrics:    [{ name: 'activeUsers' }],
   });
 
@@ -92,9 +92,7 @@ async function fetchGA4(date) {
     visitorsMap[id] = (visitorsMap[id] || 0) + parseInt(row.metricValues[0].value, 10);
   }
 
-  // WA joins — TODO: fix dimension scope mismatch
   const waMap = {};
-
   return { visitorsMap, waMap };
 }
 
