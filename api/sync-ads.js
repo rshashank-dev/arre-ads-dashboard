@@ -82,7 +82,7 @@ async function fetchGA4(date) {
   const [visitorsResp] = await client.runReport({
     property: `properties/${propertyId}`,
     dateRanges: [{ startDate: date, endDate: date }],
-    dimensions: [{ name: 'firstUserCampaign' }],
+    dimensions: [{ name: 'sessionCampaignName' }],
     metrics:    [{ name: 'activeUsers' }],
   });
 
