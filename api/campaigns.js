@@ -63,6 +63,7 @@ export default async function handler(req, res) {
           campaign_id:   row.campaign_id,
           campaign_name: row.campaign_name,
           src:           row.src,
+          result_type:   row.result_type || 'landing_page_view',
           impressions:   0,
           reach:         0,
           clicks:        0,

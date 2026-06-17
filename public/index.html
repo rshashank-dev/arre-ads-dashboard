@@ -217,7 +217,7 @@ tr.tree-last-ad td{border-bottom:1px solid var(--border)}
             <th class="sh">Status</th>
             <th class="sh">Platform</th>
             <th>Impressions</th><th>Reach</th><th>Clicks</th>
-            <th>Spent (&#8377;)</th><th>CPC (&#8377;)</th><th>Landings</th><th>&#8377; / Landing</th>
+            <th>Spent (&#8377;)</th><th>CPC (&#8377;)</th><th>Results</th><th>&#8377; / Result</th>
             <th>Visitors</th><th>&#8377; / Visitor</th><th>WA Joins</th><th>&#8377; / WA Join</th>
           </tr>
         </thead>
@@ -234,6 +234,8 @@ tr.tree-last-ad td{border-bottom:1px solid var(--border)}
 <script>
 const MONTHS=["January","February","March","April","May","June","July","August","September","October","November","December"];
 const DAYS=["S","M","T","W","T","F","S"];
+const RESULT_LABEL={'app_install':'Installs','lead':'Leads','landing_page_view':'Landings'};
+function resultLabel(type){return RESULT_LABEL[type]||'Results';}
 const WARN_LANDING=2.0, WARN_WA=50, GOOD_WA=10, WARN_CPC=1.0, GOOD_CPC=0.4, WARN_VISITOR=2.0, GOOD_VISITOR=0.8;
 
 // timezone-safe date
@@ -477,7 +479,7 @@ function renderTable(rows){
       <td>${fmtN(dr.clicks)}</td>
       <td>${fmtR(dr.spent)}</td>
       <td class="${dr.cpc>=WARN_CPC?'cw':dr.cpc>0&&dr.cpc<=GOOD_CPC?'cgood':''}">${fmtR(dr.cpc)}</td>
-      <td>${fmtN(dr.landings||0)}</td>
+      <td>${fmtN(dr.landings||0)}<br><span style="font-size:10px;color:var(--t3)">${resultLabel(r.result_type)}</span></td>
       <td class="${dr.cost_landing>=WARN_LANDING?'cw':''}">${fmtR(dr.cost_landing)}</td>
       <td>${fmtN(dr.ga_visitors)}</td>
       <td class="${dr.cost_visitor>=WARN_VISITOR?'cw':dr.cost_visitor>0&&dr.cost_visitor<=GOOD_VISITOR?'cgood':''}">${fmtR(dr.cost_visitor)}</td>
