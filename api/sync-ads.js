@@ -25,6 +25,7 @@ const META_FIELDS = [
   'impressions','reach','clicks','spend','cpc','actions',
 ].join(',');
 
+// Priority order: app_install > lead > landing_page_view
 const RESULT_PRIORITY = ['app_install', 'lead', 'landing_page_view'];
 
 function parseResult(actions = []) {
@@ -34,9 +35,16 @@ function parseResult(actions = []) {
       return { count: parseInt(a.value, 10), type };
     }
   }
+  // fallback: landing_page_view even if 0
   const a = actions.find(x => x.action_type === 'landing_page_view');
   return { count: a ? parseInt(a.value, 10) : 0, type: 'landing_page_view' };
 }
+
+const RESULT_LABEL = {
+  'app_install':      'Installs',
+  'lead':             'Leads',
+  'landing_page_view':'Landings',
+};
 
 async function fetchMetaLevel(date, level) {
   const token     = process.env.META_ACCESS_TOKEN;
@@ -50,6 +58,8 @@ async function fetchMetaLevel(date, level) {
     + `&access_token=${token}`;
 
   const rows = [];
+
+  // follow pagination
   while (url) {
     const res  = await fetch(url);
     const json = await res.json();
@@ -57,6 +67,7 @@ async function fetchMetaLevel(date, level) {
     (json.data || []).forEach(r => rows.push(r));
     url = json.paging?.next || null;
   }
+
   return rows;
 }
 
@@ -67,11 +78,11 @@ async function fetchGA4(date) {
   const credentials = JSON.parse(process.env.GA4_SERVICE_ACCOUNT_JSON);
   const client      = new BetaAnalyticsDataClient({ credentials });
 
-  // 'firstUserCampaign' returns numeric Meta campaign IDs — confirmed correct dimension
+  // visitors by campaign
   const [visitorsResp] = await client.runReport({
     property: `properties/${propertyId}`,
     dateRanges: [{ startDate: date, endDate: date }],
-    dimensions: [{ name: 'firstUserCampaign' }],
+    dimensions: [{ name: 'firstUserCampaignId' }],
     metrics:    [{ name: 'activeUsers' }],
   });
 
@@ -96,6 +107,7 @@ export default async function handler(req, res) {
   try {
     console.log(`[sync-ads] Syncing date: ${date}`);
 
+    // Fetch all three levels in parallel along with GA4
     const [campaignRows, adsetRows, adRows, ga4Data] = await Promise.all([
       fetchMetaLevel(date, 'campaign'),
       fetchMetaLevel(date, 'adset'),
@@ -104,9 +116,6 @@ export default async function handler(req, res) {
     ]);
 
     const { visitorsMap, waMap } = ga4Data;
-
-    console.log(`[sync-ads] GA4 visitorsMap keys:`, Object.keys(visitorsMap));
-    console.log(`[sync-ads] Meta campaign_ids:`, campaignRows.map(r => r.campaign_id));
 
     // ── 1. Upsert campaigns ──
     const campaignUpserts = campaignRows.map(r => ({
@@ -180,18 +189,15 @@ export default async function handler(req, res) {
       if (error) throw new Error(`Supabase ads upsert: ${error.message}`);
     }
 
+    console.log(`[sync-ads] GA4 visitorsMap keys:`, Object.keys(visitorsMap));
+    console.log(`[sync-ads] Meta campaign_ids:`, campaignRows.map(r => r.campaign_id));
+    console.log(`[sync-ads] Meta campaign_names:`, campaignRows.map(r => r.campaign_name));
     console.log(`[sync-ads] Done: ${campaignUpserts.length} campaigns, ${adsetUpserts.length} adsets, ${adUpserts.length} ads`);
-
     return res.status(200).json({
-      success:   true,
-      date,
+      success: true, date,
       campaigns: campaignUpserts.length,
       adsets:    adsetUpserts.length,
       ads:       adUpserts.length,
-      ga4_debug: {
-        visitorsMap_keys: Object.keys(visitorsMap),
-        meta_campaign_ids: campaignRows.map(r => r.campaign_id),
-      },
     });
 
   } catch (err) {
