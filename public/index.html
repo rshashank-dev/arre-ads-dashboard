@@ -322,6 +322,18 @@ table.fnl-tbl tbody tr:hover td{background:rgba(255,255,255,.02)}
  transform:none!important; border:none!important; width:auto!important; height:auto!important;
 }
 
+
+/* Final clean SVG connector layer */
+.fnl-top{position:relative}
+.fnl-connectors{position:absolute;left:0;top:0;width:100%;height:310px;z-index:4;pointer-events:none;overflow:visible}
+.fnl-connectors .stage-divider{fill:none;stroke:rgba(255,255,255,.34);stroke-width:1;stroke-dasharray:3 5}
+.fnl-connectors .flow-line{fill:none;stroke:rgba(255,255,255,.52);stroke-width:1.6;stroke-dasharray:4 5}
+.fnl-connectors .arrow-head{fill:none;stroke:rgba(255,255,255,.72);stroke-width:1.6}
+.fnl-head-cell:not(:last-child)::after,
+.fnl-left::after,.fnl-right::before,.fnl-right::after,
+.fnl-outcome.wa::before,.fnl-outcome.app::before,
+.fnl-outcome.wa::after,.fnl-outcome.app::after{display:none!important}
+
 </style>
 </head>
 <body>
@@ -717,6 +729,15 @@ function buildFunnelPanel(row,fd,colSpan){
 <div class="fnl-panel">
   <div class="fnl-inner">
     <div class="fnl-top">
+<svg class="fnl-connectors" viewBox="0 0 1280 310" preserveAspectRatio="none" aria-hidden="true">
+  <!-- continuous stage dividers -->
+  <path class="stage-divider" d="M235 0V280 M470 0V280 M705 0V280"/>
+  <!-- stage arrows -->
+  <path class="flow-line" d="M195 142H270 M430 142H505 M665 142H740"/>
+  <!-- final split: step 4 to outcomes -->
+  <path class="flow-line" d="M900 142H955 V88 H990 M955 142V226 H990"/>
+  <path class="arrow-head" d="M982 82L990 88L982 94 M982 220L990 226L982 232"/>
+</svg>
 
       <!-- LEFT: 4 steps -->
       <div class="fnl-left">
