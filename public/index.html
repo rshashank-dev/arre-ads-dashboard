@@ -286,6 +286,42 @@ table.fnl-tbl tbody tr:hover td{background:rgba(255,255,255,.02)}
 .fnl-tbl-wrap{border-radius:10px}
 @media(max-width:900px){.fnl-top,.fnl-bottom{grid-template-columns:1fr}.fnl-right{padding:24px 0 0}.fnl-right::before,.fnl-right::after,.fnl-outcome::before{display:none}.fnl-side{grid-template-rows:none}.fnl-head-cell{padding-right:12px}.fnl-bar{width:62px}}
 
+
+/* Connector repair: complete dividers and a single clean branch from step 4 */
+.fnl-head-cell:not(:last-child)::after{
+  top:0!important;height:100%!important;bottom:0!important;
+  border-right:1px dashed rgba(255,255,255,.38)!important;
+}
+.fnl-chart-wrap{overflow:visible!important}
+.fnl-right{overflow:visible!important}
+.fnl-right::before{display:none!important}
+.fnl-right::after{display:none!important}
+
+/* remove prior outcome pseudo arrows */
+.fnl-outcome.wa::before,.fnl-outcome.app::before{display:none!important}
+
+/* One complete connector from the last funnel stage, then split to each card */
+.fnl-left{position:relative}
+.fnl-left::after{
+ content:""; position:absolute; right:-1px; top:142px; width:58px; height:154px;
+ border-left:2px dashed rgba(255,255,255,.42);
+ border-top:2px dashed rgba(255,255,255,.42);
+ border-bottom:2px dashed rgba(255,255,255,.42);
+ border-radius:0 0 0 8px; z-index:5; pointer-events:none;
+}
+.fnl-right .fnl-outcome{position:relative}
+.fnl-right .fnl-outcome.wa::after,
+.fnl-right .fnl-outcome.app::after{
+ content:""; position:absolute; left:-59px; top:50%; width:58px;
+ border-top:2px dashed rgba(255,255,255,.42); z-index:6; pointer-events:none;
+}
+.fnl-right .fnl-outcome.wa::before,
+.fnl-right .fnl-outcome.app::before{
+ display:block!important; content:"›"; position:absolute; left:-11px; top:calc(50% - 16px);
+ color:rgba(255,255,255,.75); font-size:28px; line-height:28px; z-index:7;
+ transform:none!important; border:none!important; width:auto!important; height:auto!important;
+}
+
 </style>
 </head>
 <body>
