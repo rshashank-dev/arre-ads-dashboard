@@ -464,6 +464,62 @@ table.fnl-tbl tbody tr:hover td{background:rgba(255,255,255,.02)}
 }
 .fnl-step5-head .fnl-step-name{justify-content:center!important;text-align:center!important}
 
+
+/* Final alignment cleanup */
+.fnl-heads{position:relative!important;z-index:5!important}
+.fnl-head-cell{justify-content:flex-start!important;padding-top:0!important}
+.fnl-step5-head{justify-content:flex-start!important;padding-top:0!important;min-height:112px!important}
+.fnl-step5-head .fnl-head-num{margin-top:0!important}
+.fnl-step5-head .fnl-step-name{margin-top:11px!important}
+
+/* conversion pills belong in the middle of divider line, never under the baseline */
+.fnl-pcts{
+ position:absolute!important;left:0!important;top:142px!important;height:58px!important;
+ margin:0!important;z-index:12!important;pointer-events:none!important;
+}
+.fnl-pct-cell{height:58px!important;justify-content:center!important}
+.fnl-cpill{margin:0 auto!important}
+.fnl-arrow{margin:7px auto 0!important}
+
+/* Remove every legacy step-5 connector. Build exactly one split system. */
+.fnl-right::before,.fnl-right::after,
+.fnl-right .fnl-step5-head::after,
+.fnl-right .fnl-outcome.wa > .fnl-oc-top::before,
+.fnl-right .fnl-outcome.wa .fnl-oc-top::after,
+.fnl-right .fnl-outcome.app .fnl-oc-top::after,
+.fnl-right .fnl-outcome.wa::before,.fnl-right .fnl-outcome.app::before,
+.fnl-right .fnl-outcome.wa::after,.fnl-right .fnl-outcome.app::after{display:none!important}
+
+/* one rail from the final funnel edge and exactly two centred branches */
+.fnl-right{position:relative!important}
+.fnl-right .fnl-step5-head::before{
+ content:"";display:block!important;position:absolute!important;
+ left:-66px!important;top:154px!important;width:66px!important;height:140px!important;
+ border-left:2px dashed rgba(255,255,255,.48)!important;
+ border-top:2px dashed rgba(255,255,255,.48)!important;
+ z-index:6!important;
+}
+.fnl-right .fnl-outcome.wa::after,.fnl-right .fnl-outcome.app::after{
+ content:"";display:block!important;position:absolute!important;
+ left:-66px!important;top:50%!important;width:66px!important;
+ border-top:2px dashed rgba(255,255,255,.48)!important;z-index:7!important;
+}
+.fnl-right .fnl-outcome.wa::before,.fnl-right .fnl-outcome.app::before{
+ content:"›";display:block!important;position:absolute!important;
+ left:-12px!important;top:calc(50% - 15px)!important;
+ font-size:27px!important;line-height:27px!important;color:rgba(255,255,255,.82)!important;
+ background:none!important;border:0!important;width:auto!important;height:auto!important;z-index:8!important;
+}
+/* one label per branch */
+.fnl-right .fnl-outcome.wa .fnl-oc-top::after,
+.fnl-right .fnl-outcome.app .fnl-oc-top::after{
+ content:"0.00%"!important;display:block!important;position:absolute!important;
+ left:-58px!important;top:50%!important;transform:translateY(-50%)!important;
+ font-size:10px!important;line-height:12px!important;padding:1px 3px!important;
+ color:rgba(255,255,255,.72)!important;background:#202020!important;border-radius:3px!important;
+ z-index:10!important;
+}
+
 </style>
 </head>
 <body>
