@@ -137,6 +137,10 @@ tr.tree-last-ad td{border-bottom:1px solid var(--border)}
 .wa-toggle{display:inline-block;font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px;border:1px solid rgba(46,196,182,0.35);color:var(--t3);cursor:pointer;user-select:none;transition:all .15s;white-space:nowrap}
 .wa-toggle:hover{color:var(--accent);border-color:rgba(46,196,182,0.6)}
 .wa-toggle.enabled{background:rgba(46,196,182,0.15);border-color:var(--accent);color:var(--accent)}
+.wa-link-capsule{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:4px 10px;border-radius:10px;border:1px solid rgba(46,196,182,0.5);color:var(--accent);background:rgba(46,196,182,0.08);cursor:pointer;white-space:nowrap;transition:all .15s;text-decoration:none}
+.wa-link-capsule:hover{background:rgba(46,196,182,0.18);border-color:var(--accent)}
+.wa-link-capsule svg{flex-shrink:0}
+
 
 /* states */
 .state-loading,.state-error,.state-empty{text-align:center;padding:40px 24px;color:var(--t3);font-size:12px}
@@ -468,7 +472,20 @@ let cachedRows=[];
 const drilldownCache={};
 const expandedAdsets=new Set();
 const webappEnabled=new Set();
-const mockFunnelData={};  // filled by real API later: {campaign_id:{landings,pod_plays,wa_intent,app_opens}}
+
+/* ── webapp_campaigns persistence (Supabase) ── */
+async function loadWebappCampaigns(){
+  try{
+    const res=await fetch('/api/webapp-campaigns');
+    const json=await res.json();
+    (json.campaign_ids||[]).forEach(id=>webappEnabled.add(id));
+    document.getElementById('wa-badge').textContent=webappEnabled.size;
+  }catch(e){ console.warn('Could not load webapp campaigns:',e); }
+}
+// Funnel data cache: campaign_id -> {landings, pod_plays, wa_intent, app_opens}
+const funnelCache={};
+// GA4 uses slug keys for some campaigns — map slug -> Supabase campaign_id
+const GA4_SLUG_MAP={'tamil_offline':'52508532865187'};
 let currentTab='normal';
 
 /* ── tab switch ── */
@@ -531,11 +548,20 @@ document.addEventListener('click',e=>{
 function toggleRow(key){if(excluded.has(key))excluded.delete(key);else excluded.add(key);renderTable(cachedRows);}
 function toggleAdset(id){if(expandedAdsets.has(id))expandedAdsets.delete(id);else expandedAdsets.add(id);renderTable(cachedRows);}
 function toggleAdsetExclude(id){if(excludedAdsets.has(id))excludedAdsets.delete(id);else excludedAdsets.add(id);renderTable(cachedRows);}
-function toggleWebApp(cid){
-  if(webappEnabled.has(cid))webappEnabled.delete(cid);else webappEnabled.add(cid);
+async function toggleWebApp(cid,name){
+  const enabling=!webappEnabled.has(cid);
+  if(enabling) webappEnabled.add(cid); else webappEnabled.delete(cid);
   document.getElementById('wa-badge').textContent=webappEnabled.size;
   renderTable(cachedRows);
   if(currentTab==='webapp')renderWebApp();
+  // Persist to Supabase
+  try{
+    await fetch('/api/webapp-campaigns',{
+      method: enabling?'POST':'DELETE',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({campaign_id:cid, campaign_name:name||cid})
+    });
+  }catch(e){ console.warn('webapp-campaigns persist failed:',e); }
 }
 async function toggleExpand(key){
   if(expanded.has(key)){expanded.delete(key);renderTable(cachedRows);return;}
@@ -551,12 +577,38 @@ async function toggleExpand(key){
   }
   row.adsets=drilldownCache[key];renderTable(cachedRows);
 }
-function toggleWaExpand(cid){if(waExpanded.has(cid))waExpanded.delete(cid);else waExpanded.add(cid);renderWebApp();}
+async function fetchFunnelData(){
+  if(funnelFetchPromise) return funnelFetchPromise;
+  const from=toYYYYMMDD(selStart), to=toYYYYMMDD(selEnd);
+  funnelFetchPromise = fetch(`/api/webapp-funnel?from=${from}&to=${to}`)
+    .then(r=>r.json())
+    .then(json=>{
+      const raw=json.funnel||{};
+      // Map GA4 keys -> campaign_id: numeric keys match directly, slugs use GA4_SLUG_MAP
+      Object.entries(raw).forEach(([ga4key, vals])=>{
+        const cid = GA4_SLUG_MAP[ga4key] || ga4key;
+        funnelCache[cid] = vals;
+      });
+    })
+    .catch(e=>console.warn('webapp-funnel fetch failed:',e))
+    .finally(()=>{ funnelFetchPromise=null; });
+  return funnelFetchPromise;
+}
+
+async function toggleWaExpand(cid){
+  if(waExpanded.has(cid)){ waExpanded.delete(cid); renderWebApp(); return; }
+  waExpanded.add(cid);
+  renderWebApp(); // show loading state immediately
+  if(!funnelCache[cid]){ await fetchFunnelData(); }
+  renderWebApp(); // re-render with real data
+}
 
 /* ── data fetch ── */
 async function loadData(){
   const from=toYYYYMMDD(selStart),to=toYYYYMMDD(selEnd);
   Object.keys(drilldownCache).forEach(k=>delete drilldownCache[k]);
+  Object.keys(funnelCache).forEach(k=>delete funnelCache[k]);
+  funnelFetchPromise=null;
   cachedRows.forEach(r=>delete r.adsets);
   document.getElementById('tbody').innerHTML='<tr><td colspan="17" class="state-loading"><span class="spinner"></span>Loading data...</td></tr>';
   try{
@@ -565,6 +617,8 @@ async function loadData(){
     if(!res.ok)throw new Error(json.error||'API error');
     cachedRows=json.rows||[];
     renderTable(cachedRows);
+    // Pre-fetch funnel data so WebApp tab is ready immediately
+    fetchFunnelData().then(()=>{ if(currentTab==='webapp')renderWebApp(); });
     if(currentTab==='webapp')renderWebApp();
   }catch(err){
     document.getElementById('tbody').innerHTML=`<tr><td colspan="17" class="state-error">Failed to load: ${err.message}</td></tr>`;
@@ -611,11 +665,12 @@ function renderTable(rows){
       <td class="${dr.cpc>=WARN_CPC?'cw':dr.cpc>0&&dr.cpc<=GOOD_CPC?'cgood':''}">${fmtR(dr.cpc)}</td>
       <td style="vertical-align:middle;position:relative"><div style="text-align:right">${fmtN(dr.landings||0)}</div><div style="text-align:right;font-size:10px;color:var(--t3);position:absolute;right:8px;margin-top:1px">${resultLabel(r.result_type)}</div></td>
       <td class="${dr.cost_landing>=WARN_LANDING?'cw':''}">${fmtR(dr.cost_landing)}</td>
-      <td>${fmtN(dr.ga_visitors)}</td>
+      ${isWA ? `<td colspan="4" style="text-align:center;opacity:0.4" title="Tracked via WebApp tab">—</td>` : `<td>${fmtN(dr.ga_visitors)}</td>
       <td class="${dr.cost_visitor>=WARN_VISITOR?'cw':dr.cost_visitor>0&&dr.cost_visitor<=GOOD_VISITOR?'cgood':''}">${fmtR(dr.cost_visitor)}</td>
       <td>${fmtN(dr.wa_joins)}</td>
-      <td class="${dr.cost_wa_join>=WARN_WA?'cw':dr.cost_wa_join>0&&dr.cost_wa_join<=GOOD_WA?'cgood':''}">${fmtR(dr.cost_wa_join)}</td>
-      <td class="sc"><span class="wa-toggle ${isWA?'enabled':''}" onclick="toggleWebApp('${r.campaign_id}')">${isWA?'✓ WebApp':'+ WebApp'}</span></td>
+      <td class="${dr.cost_wa_join>=WARN_WA?'cw':dr.cost_wa_join>0&&dr.cost_wa_join<=GOOD_WA?'cgood':''}">${fmtR(dr.cost_wa_join)}</td>`}
+      <td class="sc">${isWA ? `<span class="wa-link-capsule" onclick="switchTab('webapp');waExpanded.add('${r.campaign_id}');renderWebApp()">View in WebApp <svg width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><path d='M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6'/><polyline points='15 3 21 3 21 9'/><line x1='10' y1='14' x2='21' y2='3'/></svg></span>` : `<span class="wa-toggle" onclick="toggleWebApp('${r.campaign_id}','${r.campaign_name.replace(/'/g,"\\'")}')">${'+ WebApp'}</span>`}
+      </td>
     </tr>`;
     if(isExpanded){
       if(r.adsets&&r.adsets.length){
@@ -770,14 +825,14 @@ function buildFunnelPanel(row,fd,colSpan){
         <div class="fnl-outcome wa">
           <div class="fnl-oc-top"><span class="fnl-oc-badge wa">5A</span><span class="fnl-oc-name">WhatsApp Intent</span></div>
           <div class="fnl-oc-body">
-            <div class="fnl-oc-icon wa">💬</div>
+            <div class="fnl-oc-icon wa"><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg></div>
             <div><div class="fnl-oc-num wa">${Number(wa).toLocaleString('en-IN')}</div><div class="fnl-oc-sub">users</div></div>
           </div>
         </div>
         <div class="fnl-outcome app">
           <div class="fnl-oc-top"><span class="fnl-oc-badge app">5B</span><span class="fnl-oc-name">Open App Click</span></div>
           <div class="fnl-oc-body">
-            <div class="fnl-oc-icon app">📱</div>
+            <div class="fnl-oc-icon app"><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg></div>
             <div><div class="fnl-oc-num app">${Number(app).toLocaleString('en-IN')}</div><div class="fnl-oc-sub">users</div></div>
           </div>
         </div>
@@ -821,13 +876,13 @@ function buildFunnelPanel(row,fd,colSpan){
               <td class="c">${pct4}%</td><td class="c">${d4}</td><td class="c">₹${cP}</td>
             </tr>
             <tr>
-              <td class="s"><div class="fnl-step-cell"><span style="color:var(--t3);font-size:14px;margin-right:2px">↳</span><span class="fnl-badge-sm wa">5A</span><span style="font-size:16px;color:#4ade80">💬</span>WhatsApp Intent</div></td>
+              <td class="s"><div class="fnl-step-cell"><span style="color:var(--t3);font-size:14px;margin-right:2px">↳</span><span class="fnl-badge-sm wa">5A</span><span style="display:inline-flex;align-items:center;color:#4ade80;margin-right:3px"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg></span>WhatsApp Intent</div></td>
               <td class="c">${Number(wa).toLocaleString('en-IN')}</td>
               <td class="c">${convWA}%<span class="fnl-down-arr">↓</span></td>
               <td class="c">${impr>0?((wa/impr)*100).toFixed(2):0}%</td><td class="c">${dWA}</td><td class="c">₹${cWA}</td>
             </tr>
             <tr>
-              <td class="s"><div class="fnl-step-cell"><span style="color:var(--t3);font-size:14px;margin-right:2px">↳</span><span class="fnl-badge-sm app">5B</span><span style="font-size:16px;color:#a78bfa">📱</span>Open App Click</div></td>
+              <td class="s"><div class="fnl-step-cell"><span style="color:var(--t3);font-size:14px;margin-right:2px">↳</span><span class="fnl-badge-sm app">5B</span><span style="display:inline-flex;align-items:center;color:#a78bfa;margin-right:3px"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg></span>Open App Click</div></td>
               <td class="c">${Number(app).toLocaleString('en-IN')}</td>
               <td class="c">${convApp}%<span class="fnl-down-arr">↓</span></td>
               <td class="c">${impr>0?((app/impr)*100).toFixed(2):0}%</td><td class="c">${dApp}</td><td class="c">₹${cApp}</td>
@@ -839,7 +894,7 @@ function buildFunnelPanel(row,fd,colSpan){
       <!-- Side cards -->
       <div class="fnl-side">
         <div class="fnl-scard">
-          <div class="fnl-scard-icon money">$</div>
+          <div class="fnl-scard-icon money">₹</div>
           <div class="fnl-scard-body">
             <div class="fnl-scard-label">Spent / Total Cost</div>
             <div class="fnl-scard-val">${fmtR(spent)}</div>
@@ -877,7 +932,7 @@ function renderWebApp(){
   }
   const TW={spent:0,impr:0,clicks:0,pod:0,wa:0,app:0};
   waRows.forEach(r=>{
-    const fd=mockFunnelData[r.campaign_id]||{landings:r.landings||0,pod_plays:0,wa_intent:0,app_opens:0};
+    const fd=funnelCache[r.campaign_id]||{landings:r.landings||0,pod_plays:0,wa_intent:0,app_opens:0};
     TW.spent+=r.spent;TW.impr+=r.impressions;TW.clicks+=r.clicks;
     TW.pod+=fd.pod_plays;TW.wa+=fd.wa_intent;TW.app+=fd.app_opens;
   });
@@ -891,7 +946,7 @@ function renderWebApp(){
 
   let html='';
   [...waRows].sort((a,b)=>b.spent-a.spent).forEach(r=>{
-    const fd=mockFunnelData[r.campaign_id]||{landings:r.landings||0,pod_plays:0,wa_intent:0,app_opens:0};
+    const fd=funnelCache[r.campaign_id]||{landings:r.landings||0,pod_plays:0,wa_intent:0,app_opens:0};
     const isExp=waExpanded.has(r.campaign_id);
     const conv=fd.landings>0?((fd.wa_intent/fd.landings)*100).toFixed(1):'0';
     html+=`<tr>
@@ -925,8 +980,11 @@ function renderWebApp(){
 document.addEventListener('DOMContentLoaded',()=>{
   document.getElementById('date-label').textContent=fmtLabel(selStart)+' — '+fmtLabel(selEnd);
   leftYear=selStart.getFullYear();leftMonth=selStart.getMonth();
-  const yd=toYYYYMMDD(yesterday());
-  fetch(`/api/sync-ads?date=${yd}`).catch(()=>{}).finally(()=>loadData());
+  // Load persisted webapp campaigns first, then sync + load data
+  loadWebappCampaigns().finally(()=>{
+    const yd=toYYYYMMDD(yesterday());
+    fetch(`/api/sync-ads?date=${yd}`).catch(()=>{}).finally(()=>loadData());
+  });
 });
 </script>
 </body>
