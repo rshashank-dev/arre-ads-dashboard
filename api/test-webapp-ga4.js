@@ -5,7 +5,7 @@
 
 import { BetaAnalyticsDataClient } from '@google-analytics/data';
 
-const WEBAPP_PROPERTY_ID = 'a74641997p352366632';
+const WEBAPP_PROPERTY_ID = '352366632';
 
 function yesterday() {
   const d = new Date();
