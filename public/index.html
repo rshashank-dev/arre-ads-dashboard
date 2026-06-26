@@ -249,152 +249,77 @@ table.fnl-tbl tbody tr:hover td{background:rgba(255,255,255,.02)}
 .footer{text-align:center;padding:18px 24px;font-size:11px;color:var(--t3);border-top:1px solid var(--border);margin-top:16px}
 .footer span{color:var(--accent)}
 
-/* Reference-matched funnel layout */
-.fnl-panel{padding:20px 28px 28px;overflow:hidden;border-top:2px solid rgba(255,255,255,.10)}
+/* ═══ FUNNEL LAYOUT — spacious 4 steps fill full width ═══ */
+
+/* Panel scrolls horizontally if viewport is very narrow */
+.fnl-panel{padding:20px 28px 28px;overflow-x:auto;border-top:2px solid rgba(255,255,255,.10)}
 .fnl-panel-title{display:none!important}
-.fnl-inner{width:100%;max-width:none}
-.fnl-top{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:0;align-items:stretch}
-.fnl-left{width:auto;min-width:0;padding-right:0}
-.fnl-right{width:auto;padding:0 0 0 26px;position:relative;display:flex;flex-direction:column}
-.fnl-heads{width:100%;display:grid;grid-template-columns:repeat(4,minmax(0,1fr))}
-.fnl-head-cell{width:auto;padding:0 26px 0 8px;min-height:94px;position:relative}
-.fnl-head-cell:not(:last-child)::after{content:"";position:absolute;right:0;top:0;height:214px;border-right:1px dashed rgba(255,255,255,.28)}
-.fnl-head-num{margin-bottom:11px}
-.fnl-step-name{max-width:100%;font-size:15px;color:#c5c5c5}
-.fnl-step-count{text-align:center;font-size:30px;margin-top:15px;margin-bottom:7px}
-.fnl-step-sub{justify-content:center;font-size:12px}
-.fnl-chart-wrap{margin-top:0}
-.fnl-bars{height:214px;width:100%;display:grid;grid-template-columns:repeat(4,minmax(0,1fr))}
-.fnl-bar-slot{width:auto}
-.fnl-bar{width:92px}
-.fnl-baseline{width:100%;height:2px}
-.fnl-pcts{width:100%;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));margin-top:10px}
-.fnl-pct-cell{width:auto}
-.fnl-cpill{padding:5px 11px;border-color:rgba(255,255,255,.30);background:#343434}
-.fnl-arrow{font-size:21px;color:rgba(255,255,255,.55)}
-.fnl-step5-head{margin:0 0 16px 0;min-height:94px;align-items:flex-start;padding-top:0}
-.fnl-outcome{height:112px;border-radius:11px;padding:13px 16px;position:relative}
-.fnl-outcome.app{margin-top:14px}
-.fnl-oc-top{margin-bottom:8px}
-.fnl-oc-num{font-size:28px}
-.fnl-right::before{content:"";position:absolute;left:0;top:114px;height:164px;border-left:2px dashed rgba(255,255,255,.32)}
-.fnl-right::after{content:"";position:absolute;left:0;top:155px;width:27px;height:123px;border-top:2px dashed rgba(255,255,255,.32);border-bottom:2px dashed rgba(255,255,255,.32);border-radius:0 0 0 8px;pointer-events:none}
-.fnl-outcome.wa::before,.fnl-outcome.app::before{content:"→";position:absolute;left:-42px;top:43px;color:rgba(255,255,255,.65);font-size:22px}
-.fnl-bottom{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:26px;margin-top:24px;align-items:stretch}
-.fnl-side{width:auto;gap:10px;display:grid;grid-template-rows:repeat(3,1fr)}
-.fnl-scard{height:auto;min-height:0;padding:13px 16px;align-items:center}
-.fnl-tbl-wrap{border-radius:10px}
-@media(max-width:900px){.fnl-top,.fnl-bottom{grid-template-columns:1fr}.fnl-right{padding:24px 0 0}.fnl-right::before,.fnl-right::after,.fnl-outcome::before{display:none}.fnl-side{grid-template-rows:none}.fnl-head-cell{padding-right:12px}.fnl-bar{width:62px}}
+/* inner fills full panel width — no fixed pixel width */
+.fnl-inner{width:100%;min-width:900px}
 
+/* Top row: steps fill all space, step-5 is fixed 300px */
+.fnl-top{display:flex;align-items:flex-start;width:100%}
+.fnl-left{flex:1;min-width:0;display:flex;flex-direction:column}
+.fnl-right{width:300px;flex-shrink:0;padding-left:24px;position:relative;display:flex;flex-direction:column;gap:14px}
 
-/* Connector repair: complete dividers and a single clean branch from step 4 */
-.fnl-head-cell:not(:last-child)::after{
-  top:0!important;height:100%!important;bottom:0!important;
-  border-right:1px dashed rgba(255,255,255,.38)!important;
+/* 4 equal header cells — each is 25% of fnl-left */
+.fnl-heads{display:flex;width:100%}
+.fnl-head-cell{
+  flex:1;min-width:0;
+  display:flex;flex-direction:column;align-items:center;
+  padding:12px 10px 16px;text-align:center;
 }
-.fnl-chart-wrap{overflow:visible!important}
-.fnl-right{overflow:visible!important}
-.fnl-right::before{display:none!important}
-.fnl-right::after{display:none!important}
+.fnl-head-cell::after{display:none!important}
+.fnl-head-num{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;margin-bottom:10px}
+.fnl-dot-big{flex-shrink:0}
+.fnl-step-name{font-size:13px;color:#c5c5c5;text-align:center;line-height:1.3}
+.fnl-step-count{font-family:'Syne',sans-serif;font-weight:700;font-size:30px;color:var(--t1);text-align:center;line-height:1;margin-bottom:6px}
+.fnl-step-sub{display:flex;align-items:center;justify-content:center;gap:4px;font-size:12px;color:var(--t3)}
 
-/* remove prior outcome pseudo arrows */
-.fnl-outcome.wa::before,.fnl-outcome.app::before{display:none!important}
+/* Bar chart — fnl-chart-wrap is position:relative so pills sit inside it */
+.fnl-chart-wrap{position:relative;margin-top:0;width:100%}
+.fnl-bars{display:flex;align-items:flex-end;height:210px;width:100%;position:relative}
+.fnl-bar-slot{flex:1;min-width:0;display:flex;justify-content:center;align-items:flex-end}
+.fnl-bar{width:80px;max-width:70%;background:#4f8ff7;border-radius:4px 4px 0 0}
+.fnl-baseline{height:2px;background:rgba(255,255,255,.25);width:100%}
 
-/* One complete connector from the last funnel stage, then split to each card */
-.fnl-left{position:relative}
-.fnl-left::after{
- content:""; position:absolute; right:-1px; top:142px; width:58px; height:154px;
- border-left:2px dashed rgba(255,255,255,.42);
- border-top:2px dashed rgba(255,255,255,.42);
- border-bottom:2px dashed rgba(255,255,255,.42);
- border-radius:0 0 0 8px; z-index:5; pointer-events:none;
+/* Conv pills — boundaries at exactly 25%/50%/75% of fnl-chart-wrap.
+   translateX(-50%) centers pill/arrow over each boundary. */
+.fnl-cpill{
+  position:absolute;background:#2a2a2a;border:1px solid rgba(255,255,255,.30);
+  border-radius:6px;padding:5px 12px;font-family:'DM Mono',monospace;font-weight:500;
+  font-size:12px;color:var(--t2);white-space:nowrap;z-index:8;
+  transform:translateX(-50%);
 }
-.fnl-right .fnl-outcome{position:relative}
-.fnl-right .fnl-outcome.wa::after,
-.fnl-right .fnl-outcome.app::after{
- content:""; position:absolute; left:-59px; top:50%; width:58px;
- border-top:2px dashed rgba(255,255,255,.42); z-index:6; pointer-events:none;
-}
-.fnl-right .fnl-outcome.wa::before,
-.fnl-right .fnl-outcome.app::before{
- display:block!important; content:"›"; position:absolute; left:-11px; top:calc(50% - 16px);
- color:rgba(255,255,255,.75); font-size:28px; line-height:28px; z-index:7;
- transform:none!important; border:none!important; width:auto!important; height:auto!important;
+.fnl-arrow{
+  position:absolute;font-size:18px;color:rgba(255,255,255,.55);z-index:8;line-height:1;
+  transform:translateX(-50%);
 }
 
+/* % row */
+.fnl-pcts{display:flex;width:100%;margin-top:12px}
+.fnl-pct-cell{flex:1;text-align:center;font-family:'DM Mono',monospace;font-size:13px;font-weight:500;color:var(--t2)}
 
-/* Final clean SVG connector layer */
-.fnl-top{position:relative}
-.fnl-connectors{position:absolute;left:0;top:0;width:100%;height:310px;z-index:4;pointer-events:none;overflow:visible}
-.fnl-connectors .stage-divider{fill:none;stroke:rgba(255,255,255,.34);stroke-width:1;stroke-dasharray:3 5}
-.fnl-connectors .flow-line{fill:none;stroke:rgba(255,255,255,.52);stroke-width:1.6;stroke-dasharray:4 5}
-.fnl-connectors .arrow-head{fill:none;stroke:rgba(255,255,255,.72);stroke-width:1.6}
-.fnl-head-cell:not(:last-child)::after,
-.fnl-left::after,.fnl-right::before,.fnl-right::after,
+/* Step 5 — right column */
+.fnl-step5-head{display:flex;align-items:flex-start;gap:9px;padding-top:12px;margin-bottom:0}
+.fnl-outcome{border-radius:11px;padding:14px 16px;position:relative;margin:0}
+.fnl-outcome.app{margin-top:0}
+.fnl-oc-num{font-size:26px}
+
+/* Kill all legacy connectors */
+.fnl-left::after,
+.fnl-right::after,
 .fnl-outcome.wa::before,.fnl-outcome.app::before,
-.fnl-outcome.wa::after,.fnl-outcome.app::after{display:none!important}
+.fnl-outcome.wa > .fnl-oc-top::before,
+svg.fnl-branch-svg,.fnl-connectors{display:none!important}
 
-
-/* Layout-anchored connector rebuild */
-.fnl-connectors{display:none!important}
-.fnl-top{display:grid!important;grid-template-columns:minmax(0,4fr) minmax(300px,1.25fr)!important;gap:0!important}
-.fnl-left{display:grid!important;grid-template-rows:112px 214px 30px!important;position:relative!important;overflow:visible!important}
-.fnl-heads,.fnl-bars,.fnl-pcts{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;width:100%!important}
-.fnl-head-cell{padding:0 18px!important;min-height:112px!important}
-.fnl-head-cell:not(:last-child)::after{display:block!important;top:0!important;bottom:auto!important;height:326px!important;right:0!important;border-right:1px dashed rgba(255,255,255,.35)!important}
-.fnl-chart-wrap{display:contents!important}
-.fnl-bars{height:214px!important}
-.fnl-bar-slot{width:auto!important}
-.fnl-baseline{position:absolute!important;left:0!important;right:0!important;bottom:30px!important;width:auto!important}
-.fnl-pcts{margin-top:0!important;align-items:end!important}
-.fnl-pct-cell{width:auto!important}
-.fnl-cpill{z-index:8!important}
-.fnl-arrow{z-index:8!important}
-.fnl-right{padding-left:38px!important;display:grid!important;grid-template-rows:112px 112px 112px!important;gap:14px!important;position:relative!important;overflow:visible!important}
-.fnl-step5-head{min-height:auto!important;margin:0!important;align-items:flex-start!important}
-.fnl-outcome{height:112px!important;margin:0!important;align-self:stretch!important}
-.fnl-right::before{display:block!important;content:""!important;position:absolute!important;left:0!important;top:168px!important;height:126px!important;border-left:2px dashed rgba(255,255,255,.46)!important}
-.fnl-right::after{display:block!important;content:""!important;position:absolute!important;left:-78px!important;top:168px!important;width:78px!important;height:1px!important;border-top:2px dashed rgba(255,255,255,.46)!important}
-.fnl-outcome.wa::after,.fnl-outcome.app::after{display:block!important;content:""!important;position:absolute!important;left:-39px!important;top:50%!important;width:39px!important;border-top:2px dashed rgba(255,255,255,.46)!important}
-.fnl-outcome.wa::before,.fnl-outcome.app::before{display:block!important;content:"›"!important;position:absolute!important;left:-12px!important;top:calc(50% - 16px)!important;width:auto!important;height:auto!important;border:none!important;background:none!important;color:rgba(255,255,255,.78)!important;font-size:28px!important;line-height:28px!important;z-index:9!important}
-
-
-/* Final-action branch: ordinary grid/flex layout, no floating connector geometry */
-.fnl-right{padding-left:28px!important;grid-template-rows:104px 112px 112px!important;gap:14px!important}
-.fnl-right::before,.fnl-right::after,
-.fnl-outcome.wa::before,.fnl-outcome.app::before,
-.fnl-outcome.wa::after,.fnl-outcome.app::after{display:none!important}
-
-/* Stable branch rail anchored to the two outcome rows */
-.fnl-right{position:relative!important}
-.fnl-right .fnl-step5-head{position:relative!important}
-.fnl-right .fnl-step5-head::after{
- content:"";position:absolute;left:-72px;top:65px;width:72px;height:1px;
- border-top:2px dashed rgba(255,255,255,.46);
-}
-.fnl-right .fnl-outcome{position:relative!important}
-.fnl-right .fnl-outcome.wa{margin-top:0!important}
-.fnl-right .fnl-outcome.app{margin-top:0!important}
-.fnl-right .fnl-outcome.wa::after{
- display:block!important;content:"";position:absolute;left:-28px;top:50%;width:28px;
- border-top:2px dashed rgba(255,255,255,.46);
-}
-.fnl-right .fnl-outcome.app::after{
- display:block!important;content:"";position:absolute;left:-28px;top:50%;width:28px;
- border-top:2px dashed rgba(255,255,255,.46);
-}
-.fnl-right .fnl-outcome.wa::before,.fnl-right .fnl-outcome.app::before{
- display:block!important;content:"›";position:absolute;left:-11px;top:calc(50% - 16px);
- color:rgba(255,255,255,.78);font-size:28px;line-height:28px;border:none!important;
- background:none!important;width:auto!important;height:auto!important;z-index:10;
-}
-/* one vertical rail joining the two card-centre branches */
-.fnl-right .fnl-outcome.wa > .fnl-oc-top::before{
- content:"";position:absolute;left:-28px;top:50%;height:140px;
- border-left:2px dashed rgba(255,255,255,.46);transform:translateY(0);
-}
-/* Remove legacy left-side branch that caused the floating mid-air line */
-.fnl-left::after{display:none!important}
+/* SPLIT CONNECTOR — vertical spine + horizontal stubs (CSS only)
+   Cards are ~96px tall each + 14px gap.
+/* Bottom section */
+.fnl-bottom{display:flex;gap:20px;margin-top:24px;align-items:stretch}
+.fnl-side{width:280px;flex-shrink:0;display:grid;grid-template-rows:repeat(3,1fr);gap:10px}
+.fnl-scard{padding:13px 16px}
+.fnl-tbl-wrap{flex:1;border-radius:10px}
 
 </style>
 </head>
@@ -791,25 +716,13 @@ function buildFunnelPanel(row,fd,colSpan){
 <div class="fnl-panel">
   <div class="fnl-inner">
     <div class="fnl-top">
-<svg class="fnl-connectors" viewBox="0 0 1280 310" preserveAspectRatio="none" aria-hidden="true">
-  <!-- continuous stage dividers -->
-  <path class="stage-divider" d="M235 0V280 M470 0V280 M705 0V280"/>
-  <!-- stage arrows -->
-  <path class="flow-line" d="M195 142H270 M430 142H505 M665 142H740"/>
-  <!-- final split: step 4 to outcomes -->
-  <path class="flow-line" d="M900 142H955 V88 H990 M955 142V226 H990"/>
-  <path class="arrow-head" d="M982 82L990 88L982 94 M982 220L990 226L982 232"/>
-</svg>
-
-      <!-- LEFT: 4 steps -->
+      <!-- LEFT: 4 steps, each 200px wide -->
       <div class="fnl-left">
-
-        <!-- Step header row -->
         <div class="fnl-heads">
           ${[
             {n:'1',label:'Impressions',val:impr},
             {n:'2',label:'Clicks (All)',val:clicks},
-            {n:'3',label:'Landing Page View (GA)',val:landings},
+            {n:'3',label:'Landing Page View',val:landings},
             {n:'4',label:'Pod Play',val:pod}
           ].map(s=>`
           <div class="fnl-head-cell">
@@ -825,26 +738,21 @@ function buildFunnelPanel(row,fd,colSpan){
           </div>`).join('')}
         </div>
 
-        <!-- Bar chart -->
+        <!-- Bar chart — fnl-chart-wrap is position:relative, pills inside -->
         <div class="fnl-chart-wrap">
           <div class="fnl-bars">
             ${h.map((ht,i)=>`<div class="fnl-bar-slot"><div class="fnl-bar" style="height:${ht}px"></div></div>`).join('')}
-
-            <!-- Conv pills — positioned between bars -->
-            <div class="fnl-cpill" style="left:calc(25% - 49px);top:52px">${conv12}%</div>
-            <div class="fnl-arrow"  style="left:calc(25% - 18px);top:84px">→</div>
-
-            <div class="fnl-cpill" style="left:calc(50% - 49px);top:52px">${conv23}%</div>
-            <div class="fnl-arrow"  style="left:calc(50% - 18px);top:84px">→</div>
-
-            <div class="fnl-cpill" style="left:calc(75% - 49px);top:52px">${conv34}%</div>
-            <div class="fnl-arrow"  style="left:calc(75% - 18px);top:84px">→</div>
           </div>
-          <!-- Baseline -->
+          <!-- Conv pills: 25%/50%/75% of chart-wrap width = exact col boundaries -->
+          <div class="fnl-cpill" style="left:25%;top:38px">${conv12}%</div>
+          <div class="fnl-arrow"  style="left:25%;top:68px">→</div>
+          <div class="fnl-cpill" style="left:50%;top:38px">${conv23}%</div>
+          <div class="fnl-arrow"  style="left:50%;top:68px">→</div>
+          <div class="fnl-cpill" style="left:75%;top:38px">${conv34}%</div>
+          <div class="fnl-arrow"  style="left:75%;top:68px">→</div>
           <div class="fnl-baseline"></div>
         </div>
 
-        <!-- % of impressions row -->
         <div class="fnl-pcts">
           <div class="fnl-pct-cell">100%</div>
           <div class="fnl-pct-cell">${pct2}%</div>
@@ -853,46 +761,24 @@ function buildFunnelPanel(row,fd,colSpan){
         </div>
       </div>
 
-      <!-- RIGHT: step 5 + branch SVG -->
+      <!-- RIGHT: step 5 — vertical spine + stubs drawn by CSS ::before/::after -->
       <div class="fnl-right">
         <div class="fnl-step5-head">
           <div class="fnl-dot-big">5</div>
           <div class="fnl-step-name">Final Action (Two Outcomes)</div>
         </div>
-
-        <!-- Branch connector SVG -->
-        <svg class="fnl-branch-svg" width="300" height="220" viewBox="0 0 300 220" fill="none" aria-hidden="true">
-          <defs>
-            <marker id="marr" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
-              <path d="M1,1.5 L6,4 L1,6.5" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
-            </marker>
-          </defs>
-          <!-- vertical spine -->
-          <line x1="30" y1="20" x2="30" y2="180" stroke="rgba(255,255,255,0.3)" stroke-width="1.5" stroke-dasharray="5 3"/>
-          <!-- branch to WA -->
-          <path d="M30,62 L90,62" stroke="rgba(255,255,255,0.35)" stroke-width="1.5" marker-end="url(#marr)"/>
-          <!-- branch to App -->
-          <path d="M30,158 L90,158" stroke="rgba(255,255,255,0.35)" stroke-width="1.5" marker-end="url(#marr)"/>
-          <!-- conv labels -->
-          <text x="34" y="62" font-family="DM Mono, monospace" font-size="11" fill="rgba(200,200,200,0.85)">${convWA}%</text>
-          <text x="34" y="142" font-family="DM Mono, monospace" font-size="11" fill="rgba(200,200,200,0.85)">${convApp}%</text>
-        </svg>
-
-        <!-- Outcome cards — aligned to branch points -->
-        <div style="position:relative;margin-top:-190px;padding-left:96px;display:flex;flex-direction:column;gap:0">
-          <div class="fnl-outcome wa" style="margin-top:28px">
-            <div class="fnl-oc-top"><span class="fnl-oc-badge wa">5A</span><span class="fnl-oc-name">WhatsApp Intent</span></div>
-            <div class="fnl-oc-body">
-              <div class="fnl-oc-icon wa">💬</div>
-              <div><div class="fnl-oc-num wa">${Number(wa).toLocaleString('en-IN')}</div><div class="fnl-oc-sub">users</div></div>
-            </div>
+        <div class="fnl-outcome wa">
+          <div class="fnl-oc-top"><span class="fnl-oc-badge wa">5A</span><span class="fnl-oc-name">WhatsApp Intent</span></div>
+          <div class="fnl-oc-body">
+            <div class="fnl-oc-icon wa">💬</div>
+            <div><div class="fnl-oc-num wa">${Number(wa).toLocaleString('en-IN')}</div><div class="fnl-oc-sub">users</div></div>
           </div>
-          <div class="fnl-outcome app" style="margin-top:14px">
-            <div class="fnl-oc-top"><span class="fnl-oc-badge app">5B</span><span class="fnl-oc-name">Open App Click</span></div>
-            <div class="fnl-oc-body">
-              <div class="fnl-oc-icon app">📱</div>
-              <div><div class="fnl-oc-num app">${Number(app).toLocaleString('en-IN')}</div><div class="fnl-oc-sub">users</div></div>
-            </div>
+        </div>
+        <div class="fnl-outcome app">
+          <div class="fnl-oc-top"><span class="fnl-oc-badge app">5B</span><span class="fnl-oc-name">Open App Click</span></div>
+          <div class="fnl-oc-body">
+            <div class="fnl-oc-icon app">📱</div>
+            <div><div class="fnl-oc-num app">${Number(app).toLocaleString('en-IN')}</div><div class="fnl-oc-sub">users</div></div>
           </div>
         </div>
       </div>
@@ -923,7 +809,7 @@ function buildFunnelPanel(row,fd,colSpan){
               <td class="c">${pct2}%</td><td class="c">${d2}</td><td class="c">₹${cC}</td>
             </tr>
             <tr>
-              <td class="s"><div class="fnl-step-cell"><span class="fnl-dot-sm blue">3</span>Landing Page View (GA)</div></td>
+              <td class="s"><div class="fnl-step-cell"><span class="fnl-dot-sm blue">3</span>Landing Page View</div></td>
               <td class="c">${Number(landings).toLocaleString('en-IN')}</td>
               <td class="c">${conv23}%<span class="fnl-down-arr">↓</span></td>
               <td class="c">${pct3}%</td><td class="c">${d3}</td><td class="c">₹${cL}</td>
