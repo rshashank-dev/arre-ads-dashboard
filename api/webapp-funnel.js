@@ -6,6 +6,10 @@
 // Query params:
 //   ?from=YYYY-MM-DD&to=YYYY-MM-DD   (defaults to yesterday–yesterday)
 //   ?campaign_ids=101,102,103         (optional filter — if omitted returns all)
+//
+// NOTE: All metrics use activeUsers (unique users), NOT eventCount.
+// This means pod_plays = unique users who played at least one pod (not total play events).
+// This ensures pod_plays can never exceed landings.
 
 import { BetaAnalyticsDataClient } from '@google-analytics/data';
 
@@ -49,6 +53,7 @@ export default async function handler(req, res) {
   // ── Query ──
   // Safe pattern: eventName as dimension (NOT filter) — filter in app code
   // sessionCampaignName matches utm_campaign = Meta campaign_id
+  // We only fetch activeUsers — consistent unique-user counting across all steps.
   let rawRows;
   try {
     const [response] = await client.runReport({
@@ -59,7 +64,6 @@ export default async function handler(req, res) {
         { name: 'eventName' },
       ],
       metrics: [
-        { name: 'eventCount' },
         { name: 'activeUsers' },
       ],
     });
@@ -74,13 +78,14 @@ export default async function handler(req, res) {
   }
 
   // ── Parse ──
+  // All metrics use activeUsers (unique users per event per campaign).
+  // pod_plays = unique users who triggered pod_play (≤ landings by definition).
   const byCampaign = {};
 
   for (const row of rawRows) {
     const campaign = row.dimensionValues[0].value;
     const event    = row.dimensionValues[1].value;
-    const count    = parseInt(row.metricValues[0].value, 10) || 0;
-    const users    = parseInt(row.metricValues[1].value, 10) || 0;
+    const users    = parseInt(row.metricValues[0].value, 10) || 0;
 
     // Skip non-campaign traffic
     if (!campaign || campaign === '(not set)' || campaign === '(direct)' ||
@@ -95,9 +100,9 @@ export default async function handler(req, res) {
     }
 
     if (event === 'page_view')           byCampaign[campaign].landings  += users;
-    else if (event === 'pod_play')       byCampaign[campaign].pod_plays += count;
-    else if (WA_EVENTS.has(event))       byCampaign[campaign].wa_intent += count;
-    else if (event === 'open_app_click') byCampaign[campaign].app_opens += count;
+    else if (event === 'pod_play')       byCampaign[campaign].pod_plays += users;  // activeUsers
+    else if (WA_EVENTS.has(event))       byCampaign[campaign].wa_intent += users;  // activeUsers
+    else if (event === 'open_app_click') byCampaign[campaign].app_opens += users;  // activeUsers
   }
 
   return res.status(200).json({
@@ -105,7 +110,7 @@ export default async function handler(req, res) {
     to,
     property: WEBAPP_PROPERTY_ID,
     // Key: sessionCampaignName (= Meta campaign_id numeric string)
-    // Value: { landings, pod_plays, wa_intent, app_opens }
+    // Value: { landings, pod_plays, wa_intent, app_opens } — all activeUsers
     funnel: byCampaign,
   });
 }
