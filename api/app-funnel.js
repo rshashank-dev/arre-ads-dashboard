@@ -1,8 +1,17 @@
 // /api/app-funnel.js
 // Returns the app-side funnel for users who clicked open_app_click on the webapp
 // Funnel steps (all GA4 property 352366632, platform: ANDROID or IOS):
-//   first_open → signup_initiate → onboarding_display_name_next →
-//   onboarding_username_next → onboarding_done_click → permission_action → home_feed_tab_view
+//   signup_initiate → onboarding_display_name_next → onboarding_username_next →
+//   onboarding_done_click → permission_action → home_feed_tab_view
+//
+// NOTE: first_open is excluded — arre_user_id is not yet set when first_open fires
+// (it fires before the guest login API response returns), so it can never be stitched.
+//
+// FUTURE: Once login_method custom dimension (User-scoped, registered 2 Jul 2026)
+// has reliable data (24hr+), add 'login' as step 1, filtered by
+// customUser:login_method = 'guest'. This captures users who opened the app and
+// reached the login screen (guest login fires there), even if they drop off
+// before signing up. Uncomment the 'login' event + login_method filter below.
 //
 // Method: query by pagePath keyword (same as webapp-funnel) but platform != WEB
 // All metrics: activeUsers (unique users)
@@ -12,7 +21,10 @@ import { BetaAnalyticsDataClient } from '@google-analytics/data';
 const WEBAPP_PROPERTY_ID = '352366632';
 
 const APP_FUNNEL_EVENTS = [
-  'first_open',
+  // 'login', // FUTURE: uncomment as step 1 once login_method has data (registered 2 Jul 2026)
+  //   → filter: customUser:login_method = 'guest'
+  //   → captures users who reached the login screen (guest login fires it), even if they
+  //     never complete signup — this is the real "opened app" signal, arre_user_id IS set here
   'signup_initiate',
   'onboarding_display_name_next',
   'onboarding_username_next',
@@ -146,6 +158,17 @@ export default async function handler(req, res) {
                 inListFilter: { values: userIds.slice(0, 500) }, // GA4 max filter values
               },
             },
+            // FUTURE: uncomment when login_method has data (registered 2 Jul 2026, needs 24hr+)
+            // Restricts the 'login' event (step 1) to guest logins only — i.e. fresh
+            // installs / cleared storage, not returning-user OTP/Google logins.
+            // Not needed for signup_initiate onwards, since arre_user_id already narrows
+            // those events to exactly our webapp-clicker cohort.
+            // {
+            //   filter: {
+            //     fieldName: 'customUser:login_method',
+            //     stringFilter: { matchType: 'EXACT', value: 'guest' },
+            //   },
+            // },
           ],
         },
       },

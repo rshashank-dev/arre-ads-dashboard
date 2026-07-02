@@ -1023,8 +1023,10 @@ function renderWebApp(){
 
 // ── App Funnel Modal ──────────────────────────────────────────────────
 const APP_FUNNEL_LABELS = {
-  'first_open':                    { label: 'First Open',            color: '#a78bfa' },
-  'signup_initiate':               { label: 'Signup Initiated',      color: '#818cf8' },
+  // 'login': { label: 'Opened App (Login Screen)', color: '#a78bfa' },
+  // ^ FUTURE: enable when customUser:login_method dimension has data (registered 2 Jul 2026)
+  //   filter to login_method='guest' — see api/app-funnel.js
+  'signup_initiate':               { label: 'Signup Initiated',      color: '#a78bfa' },
   'onboarding_display_name_next':  { label: 'Entered Display Name',  color: '#60a5fa' },
   'onboarding_username_next':      { label: 'Entered Username',      color: '#34d399' },
   'onboarding_done_click':         { label: 'Onboarding Done',       color: '#4ade80' },
@@ -1077,25 +1079,24 @@ function renderAppFunnel(data, appOpeners) {
   const events = data.event_order || Object.keys(APP_FUNNEL_LABELS);
   const funnel = data.funnel || {};
 
-  const firstOpen    = funnel['first_open']         || 0;
-  const signedUp     = funnel['signup_initiate']    || 0;
-  const onboarded    = funnel['onboarding_done_click'] || 0;
-  const homeFeed     = funnel['home_feed_tab_view'] || 0;
-  const dropped      = appOpeners - firstOpen;
+  const signedUp     = funnel['signup_initiate']       || 0;
+  const onboarded    = funnel['onboarding_done_click']  || 0;
+  const homeFeed     = funnel['home_feed_tab_view']     || 0;
+  const droppedAtLogin = Math.max(0, appOpeners - signedUp);
 
   // ── Summary cards ──
   let html = `<div class="af-summary">
     <div class="af-sum-card">
-      <div class="af-sum-label">Open App Click (GA4)</div>
+      <div class="af-sum-label">Open App Click</div>
       <div class="af-sum-val purple">${appOpeners.toLocaleString('en-IN')}</div>
     </div>
     <div class="af-sum-card">
-      <div class="af-sum-label">First Open</div>
-      <div class="af-sum-val purple">${firstOpen.toLocaleString('en-IN')}</div>
+      <div class="af-sum-label">Dropped at Login</div>
+      <div class="af-sum-val red">${droppedAtLogin.toLocaleString('en-IN')}</div>
     </div>
     <div class="af-sum-card">
-      <div class="af-sum-label">Dropped at Login</div>
-      <div class="af-sum-val red">${Math.max(0,appOpeners-signedUp).toLocaleString('en-IN')}</div>
+      <div class="af-sum-label">Signed Up</div>
+      <div class="af-sum-val yellow">${signedUp.toLocaleString('en-IN')}</div>
     </div>
     <div class="af-sum-card">
       <div class="af-sum-label">Reached Home Feed</div>
@@ -1142,7 +1143,7 @@ function renderAppFunnel(data, appOpeners) {
   html += '</div>';
 
   // ── Overall conv rate ──
-  const overallConv = appOpeners > 0 ? ((homeFeed / appOpeners) * 100).toFixed(1) : 0;
+  const overallConv = appOpeners > 0 ? ((homeFeed / appOpeners) * 100).toFixed(1) : 0; // open_app_click → home_feed
   html += `
   <div style="margin-top:18px;padding:14px 16px;background:var(--bg3);border-radius:10px;border:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
     <div style="font-size:13px;color:var(--t2);font-weight:500">Overall: App Open → Home Feed</div>
