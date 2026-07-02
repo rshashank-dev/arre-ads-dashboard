@@ -1106,7 +1106,7 @@ function renderAppFunnel(data, appOpeners) {
 
   // ── Funnel steps ──
   html += '<div class="af-funnel">';
-  const maxVal = Math.max(firstOpen, appOpeners, 1);
+  const maxVal = Math.max(signedUp, appOpeners, 1);
 
   events.forEach((evt, idx) => {
     const meta  = APP_FUNNEL_LABELS[evt] || { label: evt, color: '#6b7280' };
@@ -1116,9 +1116,9 @@ function renderAppFunnel(data, appOpeners) {
     const convFromTop  = appOpeners > 0 ? ((count / appOpeners) * 100).toFixed(1) : '—';
     const barPct = maxVal > 0 ? Math.round((count / maxVal) * 100) : 0;
 
-    // Step 0 (first_open) shows drop from appOpeners
+    // Step 0 (signup_initiate) shows drop from appOpeners
     const pctLabel = idx === 0
-      ? `${convFromTop}% of app openers · ${dropped > 0 ? dropped + ' dropped before app open' : 'all opened'}`
+      ? `${convFromTop}% of app openers · ${droppedAtLogin > 0 ? droppedAtLogin + ' dropped at login' : 'all signed up'}`
       : `${convFromPrev}% from prev · ${convFromTop}% of app openers`;
 
     html += `
