@@ -1,19 +1,36 @@
 // /api/webapp-funnel.js
 // Returns GA4 funnel metrics for WebApp campaigns
 // Property: 352366632 (stream G-ENRRL5BHNE)
-// Reuses GA4_SERVICE_ACCOUNT_JSON — same service account is Viewer on this property
+//
+// FIX: Uses pagePath (landing page URL) to match campaigns, NOT sessionCampaignName.
+// sessionCampaignName only captures users with UTM params in their session.
+// Users landing directly (bookmarks, shares) are missed by that approach.
+// pagePath captures ALL users who visited the campaign landing page.
 //
 // Query params:
-//   ?from=YYYY-MM-DD&to=YYYY-MM-DD   (defaults to yesterday–yesterday)
-//   ?campaign_ids=101,102,103         (optional filter — if omitted returns all)
+//   ?from=YYYY-MM-DD&to=YYYY-MM-DD  (defaults to yesterday)
 //
-// NOTE: All metrics use activeUsers (unique users), NOT eventCount.
-// This means pod_plays = unique users who played at least one pod (not total play events).
-// This ensures pod_plays can never exceed landings.
+// All metrics use activeUsers (unique users), NOT eventCount.
 
 import { BetaAnalyticsDataClient } from '@google-analytics/data';
 
 const WEBAPP_PROPERTY_ID = '352366632';
+
+// Map: pagePath keyword → campaign_id
+// Each campaign has a unique keyword in its landing page URL.
+// Add new campaigns here when they are created.
+// PAGE_KEYWORD_MAP: keyword in landing page URL → primary campaign_id
+// "-2" test variants (52520232218787, 52520231999387) share the same landing pages
+// as their primary campaigns, so their traffic is counted in the same bucket.
+// Campaign list (active as of Jul 2026):
+//   6966808714983  = Tamil Poets Contests  (+ test variant 52520232218787, same page)
+//   6987389224583  = Tamil Singers Contest (+ test variant 52520231999387, same page)
+//   6985861068183  = Tamil RJ Contest      (offline — no webapp, skipped)
+const PAGE_KEYWORD_MAP = {
+  'poet':   '6966808714983',  // Tamil Poets Contests
+  'singer': '6987389224583',  // Tamil Singers Contest
+  // 'rj':  '6985861068183', // Tamil RJ Contest — add URL keyword when confirmed
+};
 
 // WA intent = either of these two events
 const WA_EVENTS = new Set(['whatsapp_join_click', 'campaign_join_whatsapp_click']);
@@ -30,11 +47,6 @@ export default async function handler(req, res) {
   const from = req.query.from || yesterday();
   const to   = req.query.to   || from;
 
-  // Optional campaign ID filter (comma-separated)
-  const filterIds = req.query.campaign_ids
-    ? new Set(req.query.campaign_ids.split(',').map(s => s.trim()))
-    : null;
-
   // ── Auth ──
   let credentials;
   try {
@@ -50,22 +62,28 @@ export default async function handler(req, res) {
     },
   });
 
-  // ── Query ──
-  // Safe pattern: eventName as dimension (NOT filter) — filter in app code
-  // sessionCampaignName matches utm_campaign = Meta campaign_id
-  // We only fetch activeUsers — consistent unique-user counting across all steps.
+  // ── Query GA4 ──
+  // Dimensions: pagePath + eventName (so we can see which events fired on which page)
+  // Metric: activeUsers (unique users)
+  // Platform filter: WEB only
   let rawRows;
   try {
     const [response] = await client.runReport({
       property:   `properties/${WEBAPP_PROPERTY_ID}`,
       dateRanges: [{ startDate: from, endDate: to }],
       dimensions: [
-        { name: 'sessionCampaignName' },
+        { name: 'pagePath' },    // e.g. /contest/poet, /contest/singer
         { name: 'eventName' },
       ],
       metrics: [
         { name: 'activeUsers' },
       ],
+      dimensionFilter: {
+        filter: {
+          fieldName: 'platform',
+          stringFilter: { matchType: 'EXACT', value: 'WEB' },
+        },
+      },
     });
     rawRows = response.rows || [];
   } catch (e) {
@@ -77,40 +95,41 @@ export default async function handler(req, res) {
     });
   }
 
-  // ── Parse ──
-  // All metrics use activeUsers (unique users per event per campaign).
-  // pod_plays = unique users who triggered pod_play (≤ landings by definition).
+  // ── Parse rows → campaign buckets ──
+  // For each row, check if the pagePath contains any known keyword.
+  // Assign to the matching campaign.
   const byCampaign = {};
 
   for (const row of rawRows) {
-    const campaign = row.dimensionValues[0].value;
+    const pagePath = (row.dimensionValues[0].value || '').toLowerCase();
     const event    = row.dimensionValues[1].value;
     const users    = parseInt(row.metricValues[0].value, 10) || 0;
 
-    // Skip non-campaign traffic
-    if (!campaign || campaign === '(not set)' || campaign === '(direct)' ||
-        campaign === '(referral)' || campaign === '(organic)' ||
-        campaign === '(cross-network)' || campaign === '') continue;
+    // Find which campaign this page belongs to
+    let campaignId = null;
+    for (const [keyword, cid] of Object.entries(PAGE_KEYWORD_MAP)) {
+      if (pagePath.includes(keyword)) {
+        campaignId = cid;
+        break;
+      }
+    }
+    if (!campaignId) continue;
 
-    // Apply campaign_ids filter if provided
-    if (filterIds && !filterIds.has(campaign)) continue;
-
-    if (!byCampaign[campaign]) {
-      byCampaign[campaign] = { landings: 0, pod_plays: 0, wa_intent: 0, app_opens: 0 };
+    if (!byCampaign[campaignId]) {
+      byCampaign[campaignId] = { landings: 0, pod_plays: 0, wa_intent: 0, app_opens: 0 };
     }
 
-    if (event === 'page_view')           byCampaign[campaign].landings  += users;
-    else if (event === 'pod_play')       byCampaign[campaign].pod_plays += users;  // activeUsers
-    else if (WA_EVENTS.has(event))       byCampaign[campaign].wa_intent += users;  // activeUsers
-    else if (event === 'open_app_click') byCampaign[campaign].app_opens += users;  // activeUsers
+    if (event === 'page_view')           byCampaign[campaignId].landings  += users;
+    else if (event === 'pod_play')       byCampaign[campaignId].pod_plays += users;
+    else if (WA_EVENTS.has(event))       byCampaign[campaignId].wa_intent += users;
+    else if (event === 'open_app_click') byCampaign[campaignId].app_opens += users;
   }
 
   return res.status(200).json({
     from,
     to,
     property: WEBAPP_PROPERTY_ID,
-    // Key: sessionCampaignName (= Meta campaign_id numeric string)
-    // Value: { landings, pod_plays, wa_intent, app_opens } — all activeUsers
-    funnel: byCampaign,
+    method:   'pagePath',  // so we know which approach was used
+    funnel:   byCampaign,
   });
 }
