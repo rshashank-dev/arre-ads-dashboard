@@ -325,6 +325,45 @@ svg.fnl-branch-svg,.fnl-connectors{display:none!important}
 .fnl-scard{padding:13px 16px}
 .fnl-tbl-wrap{flex:1;border-radius:10px}
 
+
+/* ── App Funnel Modal ── */
+.af-overlay{position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:9000;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(3px)}
+.af-modal{background:var(--bg2);border:1px solid var(--border);border-radius:18px;width:100%;max-width:680px;max-height:88vh;overflow-y:auto;padding:28px 28px 24px}
+.af-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:22px}
+.af-title{font-family:'Syne',sans-serif;font-weight:700;font-size:18px;color:var(--t1);line-height:1.25}
+.af-subtitle{font-size:13px;color:var(--t3);margin-top:4px}
+.af-close{width:32px;height:32px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--t2);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;transition:background .15s}
+.af-close:hover{background:var(--bg3)}
+.af-loading{text-align:center;padding:40px 0;color:var(--t3);font-size:14px}
+/* Funnel steps */
+.af-funnel{display:flex;flex-direction:column;gap:0}
+.af-step{display:flex;align-items:center;gap:14px;padding:14px 0;border-bottom:1px solid var(--border)}
+.af-step:last-child{border-bottom:none}
+.af-step-left{display:flex;align-items:center;gap:12px;flex:1;min-width:0}
+.af-step-num{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-weight:700;font-size:12px;flex-shrink:0;color:#fff}
+.af-step-info{flex:1;min-width:0}
+.af-step-label{font-size:13px;font-weight:500;color:var(--t2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.af-step-event{font-family:'DM Mono',monospace;font-size:11px;color:var(--t3);margin-top:2px}
+.af-step-right{text-align:right;flex-shrink:0}
+.af-step-count{font-family:'Syne',sans-serif;font-weight:700;font-size:22px;color:var(--t1)}
+.af-step-pct{font-size:12px;color:var(--t3);margin-top:2px}
+.af-step-bar-wrap{height:4px;background:var(--bg3);border-radius:2px;margin-top:8px;width:100%}
+.af-step-bar{height:4px;border-radius:2px;transition:width .4s ease}
+/* Connector */
+.af-connector{display:flex;align-items:center;gap:14px;padding:0 0 0 54px}
+.af-connector-line{width:2px;height:12px;background:var(--border);border-radius:1px;margin-left:-2px}
+/* Summary bar */
+.af-summary{display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap}
+.af-sum-card{flex:1;min-width:120px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:11px 14px}
+.af-sum-label{font-size:11px;color:var(--t3);font-weight:500;text-transform:uppercase;letter-spacing:.04em}
+.af-sum-val{font-family:'Syne',sans-serif;font-weight:700;font-size:20px;margin-top:4px}
+.af-sum-val.green{color:#4ade80}
+.af-sum-val.yellow{color:#fbbf24}
+.af-sum-val.red{color:#f87171}
+.af-sum-val.purple{color:#a78bfa}
+/* Clickable app count */
+.af-trigger{cursor:pointer;text-decoration:underline;text-decoration-style:dashed;text-underline-offset:3px;text-decoration-color:rgba(167,139,250,.5)}
+.af-trigger:hover{color:#a78bfa}
 </style>
 </head>
 <body>
@@ -833,7 +872,7 @@ function buildFunnelPanel(row,fd,colSpan){
           <div class="fnl-oc-top"><span class="fnl-oc-badge app">5B</span><span class="fnl-oc-name">Open App Click</span></div>
           <div class="fnl-oc-body">
             <div class="fnl-oc-icon app"><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg></div>
-            <div><div class="fnl-oc-num app">${Number(app).toLocaleString('en-IN')}</div><div class="fnl-oc-sub">users</div></div>
+            <div><div class="fnl-oc-num app af-trigger" onclick="openAppFunnel('${row.campaign_id}','${(row.campaign_name||row.campaign_id)}',${app})">${Number(app).toLocaleString('en-IN')}</div><div class="fnl-oc-sub">click to explore ↗</div></div>
           </div>
         </div>
       </div>
@@ -977,6 +1016,139 @@ function renderWebApp(){
 }
 
 /* ── init ── */
+
+// ── App Funnel Modal ──────────────────────────────────────────────────
+const APP_FUNNEL_LABELS = {
+  'first_open':                    { label: 'First Open',            color: '#a78bfa' },
+  'signup_initiate':               { label: 'Signup Initiated',      color: '#818cf8' },
+  'onboarding_display_name_next':  { label: 'Entered Display Name',  color: '#60a5fa' },
+  'onboarding_username_next':      { label: 'Entered Username',      color: '#34d399' },
+  'onboarding_done_click':         { label: 'Onboarding Done',       color: '#4ade80' },
+  'permission_action':             { label: 'Permissions Granted',   color: '#a3e635' },
+  'home_feed_tab_view':            { label: 'Reached Home Feed',     color: '#2EC4B6' },
+};
+
+const appFunnelCache = {};  // key: `${campaignId}_${from}_${to}` → data
+
+async function openAppFunnel(campaignId, campaignName, appOpeners) {
+  const overlay = document.getElementById('af-overlay');
+  const title   = document.getElementById('af-modal-title');
+  const subtitle= document.getElementById('af-modal-subtitle');
+  const body    = document.getElementById('af-modal-body');
+
+  title.textContent   = campaignName || campaignId;
+  subtitle.textContent= `${appOpeners.toLocaleString('en-IN')} users clicked Open App → app journey below`;
+  body.innerHTML      = '<div class="af-loading">Fetching app funnel from GA4…</div>';
+  overlay.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+
+  const from = document.getElementById('from-date')?.value || '';
+  const to   = document.getElementById('to-date')?.value   || from;
+  const cacheKey = `${campaignId}_${from}_${to}`;
+
+  if (appFunnelCache[cacheKey]) {
+    renderAppFunnel(appFunnelCache[cacheKey], appOpeners);
+    return;
+  }
+
+  try {
+    const params = new URLSearchParams({ from, to, campaign_id: campaignId });
+    const res  = await fetch(`/api/app-funnel?${params}`);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'API error');
+    appFunnelCache[cacheKey] = data;
+    renderAppFunnel(data, appOpeners);
+  } catch(e) {
+    body.innerHTML = `<div class="af-loading" style="color:#f87171">Failed to load: ${e.message}</div>`;
+  }
+}
+
+function closeAppFunnel() {
+  document.getElementById('af-overlay').style.display = 'none';
+  document.body.style.overflow = '';
+}
+
+function renderAppFunnel(data, appOpeners) {
+  const body   = document.getElementById('af-modal-body');
+  const events = data.event_order || Object.keys(APP_FUNNEL_LABELS);
+  const funnel = data.funnel || {};
+
+  const firstOpen    = funnel['first_open']         || 0;
+  const signedUp     = funnel['signup_initiate']    || 0;
+  const onboarded    = funnel['onboarding_done_click'] || 0;
+  const homeFeed     = funnel['home_feed_tab_view'] || 0;
+  const dropped      = appOpeners - firstOpen;
+
+  // ── Summary cards ──
+  let html = `<div class="af-summary">
+    <div class="af-sum-card">
+      <div class="af-sum-label">Opened App</div>
+      <div class="af-sum-val purple">${appOpeners.toLocaleString('en-IN')}</div>
+    </div>
+    <div class="af-sum-card">
+      <div class="af-sum-label">First Open (GA4)</div>
+      <div class="af-sum-val purple">${firstOpen.toLocaleString('en-IN')}</div>
+    </div>
+    <div class="af-sum-card">
+      <div class="af-sum-label">Dropped at Login</div>
+      <div class="af-sum-val red">${Math.max(0,appOpeners-signedUp).toLocaleString('en-IN')}</div>
+    </div>
+    <div class="af-sum-card">
+      <div class="af-sum-label">Reached Home Feed</div>
+      <div class="af-sum-val green">${homeFeed.toLocaleString('en-IN')}</div>
+    </div>
+  </div>`;
+
+  // ── Funnel steps ──
+  html += '<div class="af-funnel">';
+  const maxVal = Math.max(firstOpen, appOpeners, 1);
+
+  events.forEach((evt, idx) => {
+    const meta  = APP_FUNNEL_LABELS[evt] || { label: evt, color: '#6b7280' };
+    const count = funnel[evt] || 0;
+    const prev  = idx === 0 ? appOpeners : (funnel[events[idx-1]] || 0);
+    const convFromPrev = prev > 0 ? ((count / prev) * 100).toFixed(1) : '—';
+    const convFromTop  = appOpeners > 0 ? ((count / appOpeners) * 100).toFixed(1) : '—';
+    const barPct = maxVal > 0 ? Math.round((count / maxVal) * 100) : 0;
+
+    // Step 0 (first_open) shows drop from appOpeners
+    const pctLabel = idx === 0
+      ? `${convFromTop}% of app openers · ${dropped > 0 ? dropped + ' dropped before app open' : 'all opened'}`
+      : `${convFromPrev}% from prev · ${convFromTop}% of app openers`;
+
+    html += `
+    <div class="af-step">
+      <div class="af-step-left">
+        <div class="af-step-num" style="background:${meta.color}">${idx+1}</div>
+        <div class="af-step-info">
+          <div class="af-step-label">${meta.label}</div>
+          <div class="af-step-event">${evt}</div>
+          <div class="af-step-bar-wrap">
+            <div class="af-step-bar" style="width:${barPct}%;background:${meta.color}"></div>
+          </div>
+        </div>
+      </div>
+      <div class="af-step-right">
+        <div class="af-step-count">${count.toLocaleString('en-IN')}</div>
+        <div class="af-step-pct">${pctLabel}</div>
+      </div>
+    </div>`;
+  });
+
+  html += '</div>';
+
+  // ── Overall conv rate ──
+  const overallConv = appOpeners > 0 ? ((homeFeed / appOpeners) * 100).toFixed(1) : 0;
+  html += `
+  <div style="margin-top:18px;padding:14px 16px;background:var(--bg3);border-radius:10px;border:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+    <div style="font-size:13px;color:var(--t2);font-weight:500">Overall: App Open → Home Feed</div>
+    <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:22px;color:#2EC4B6">${overallConv}%</div>
+  </div>`;
+
+  body.innerHTML = html;
+}
+// ─────────────────────────────────────────────────────────────────────
+
 document.addEventListener('DOMContentLoaded',()=>{
   document.getElementById('date-label').textContent=fmtLabel(selStart)+' — '+fmtLabel(selEnd);
   leftYear=selStart.getFullYear();leftMonth=selStart.getMonth();
@@ -987,5 +1159,21 @@ document.addEventListener('DOMContentLoaded',()=>{
   });
 });
 </script>
+
+<!-- App Funnel Modal -->
+<div class="af-overlay" id="af-overlay" style="display:none" onclick="if(event.target===this)closeAppFunnel()">
+  <div class="af-modal" id="af-modal">
+    <div class="af-header">
+      <div>
+        <div class="af-title" id="af-modal-title">App Funnel</div>
+        <div class="af-subtitle" id="af-modal-subtitle">Users who clicked Open App</div>
+      </div>
+      <button class="af-close" onclick="closeAppFunnel()">✕</button>
+    </div>
+    <div id="af-modal-body">
+      <div class="af-loading">Loading funnel…</div>
+    </div>
+  </div>
+</div>
 </body>
 </html>
