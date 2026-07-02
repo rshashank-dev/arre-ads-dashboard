@@ -1048,8 +1048,8 @@ async function openAppFunnel(campaignId, campaignName, appOpeners) {
   overlay.style.display = 'flex';
   document.body.style.overflow = 'hidden';
 
-  const from = document.getElementById('from-date')?.value || '';
-  const to   = document.getElementById('to-date')?.value   || from;
+  const from = toYYYYMMDD(selStart);
+  const to   = toYYYYMMDD(selEnd);
   const cacheKey = `${campaignId}_${from}_${to}`;
 
   if (appFunnelCache[cacheKey]) {
