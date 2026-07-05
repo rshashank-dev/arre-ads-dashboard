@@ -364,6 +364,24 @@ svg.fnl-branch-svg,.fnl-connectors{display:none!important}
 /* Clickable app count */
 .af-trigger{cursor:pointer;text-decoration:underline;text-decoration-style:dashed;text-underline-offset:3px;text-decoration-color:rgba(167,139,250,.5)}
 .af-trigger:hover{color:#a78bfa}
+/* ── Retention tab ── */
+.ret-controls{display:flex;gap:12px;align-items:center;margin-bottom:20px;flex-wrap:wrap}
+.ret-input-group{display:flex;flex-direction:column;gap:4px}
+.ret-label{font-size:11px;color:var(--t3);font-weight:500;text-transform:uppercase;letter-spacing:.04em}
+.ret-date-input,.ret-select{background:var(--bg2);border:1px solid var(--border);border-radius:var(--rs);color:var(--t1);padding:8px 12px;font-family:'DM Sans',sans-serif;font-size:13px;height:36px}
+.ret-select{min-width:220px;cursor:pointer}
+.ret-apply-btn{background:var(--accent);color:#0a0a0a;border:none;border-radius:var(--rs);padding:0 18px;height:36px;font-weight:600;font-size:13px;cursor:pointer;align-self:flex-end;transition:opacity .15s}
+.ret-apply-btn:hover{opacity:.85}
+.ret-milestone-section{margin-bottom:26px}
+.ret-milestone-head{display:flex;align-items:baseline;gap:10px;margin-bottom:12px}
+.ret-milestone-title{font-family:'Syne',sans-serif;font-weight:700;font-size:15px;color:var(--t1)}
+.ret-cohort-size{font-size:12px;color:var(--t3)}
+.ret-cards{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.ret-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:16px}
+.ret-card-label{font-size:11px;color:var(--t3);font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px}
+.ret-card-pct{font-family:'Syne',sans-serif;font-weight:700;font-size:26px;color:var(--accent)}
+.ret-card-count{font-size:12px;color:var(--t2);margin-top:4px}
+.ret-loading{text-align:center;padding:60px 0;color:var(--t3);font-size:14px}
 </style>
 </head>
 <body>
@@ -379,6 +397,7 @@ svg.fnl-branch-svg,.fnl-connectors{display:none!important}
 <div class="tab-bar">
   <div class="tab active" id="tab-normal" onclick="switchTab('normal')">Normal</div>
   <div class="tab" id="tab-webapp" onclick="switchTab('webapp')">WebApp <span class="tab-badge" id="wa-badge">0</span></div>
+  <div class="tab" id="tab-retention" onclick="switchTab('retention')">Retention</div>
 </div>
 
 <!-- SHARED DATE PICKER — works across both tabs -->
@@ -484,6 +503,32 @@ svg.fnl-branch-svg,.fnl-connectors{display:none!important}
   </table></div></div>
 </div>
 
+<div id="view-retention" class="page page-hidden">
+  <div class="sl">Retention — ad-attributed users <span style="color:var(--t3);font-weight:400;font-size:12px">(Day 0 date range uses the date picker above)</span></div>
+  <div class="ret-controls">
+    <div class="ret-input-group">
+      <span class="ret-label">Day 0 Milestone</span>
+      <select class="ret-select" id="ret-milestone">
+        <option value="all">All Milestones</option>
+        <option value="open_app_click">Clicked Open App</option>
+        <option value="reached_login">Reached Login / Opened App</option>
+        <option value="signup_complete">Completed Signup</option>
+        <option value="onboarding_complete">Finished Onboarding</option>
+      </select>
+    </div>
+    <div class="ret-input-group">
+      <span class="ret-label">Campaign</span>
+      <select class="ret-select" id="ret-campaign">
+        <option value="all">All Campaigns</option>
+        <option value="6966808714983">Tamil Poets Contests</option>
+        <option value="6987389224583">Tamil Singers Contest</option>
+      </select>
+    </div>
+    <button class="ret-apply-btn" onclick="loadRetention()">Apply</button>
+  </div>
+  <div id="ret-body"><div class="ret-loading">Select filters and click Apply</div></div>
+</div>
+
 <div class="footer">Arre Voice &nbsp;&middot;&nbsp; <span>Ads Performance</span> &nbsp;&middot;&nbsp; Internal use only</div>
 
 <script>
@@ -532,9 +577,82 @@ function switchTab(tab){
   currentTab=tab;
   document.getElementById('tab-normal').classList.toggle('active',tab==='normal');
   document.getElementById('tab-webapp').classList.toggle('active',tab==='webapp');
+  document.getElementById('tab-retention').classList.toggle('active',tab==='retention');
   document.getElementById('view-normal').classList.toggle('page-hidden',tab!=='normal');
   document.getElementById('view-webapp').classList.toggle('page-hidden',tab!=='webapp');
+  document.getElementById('view-retention').classList.toggle('page-hidden',tab!=='retention');
   if(tab==='webapp')renderWebApp();
+  if(tab==='retention' && !retentionInitialized){
+    retentionInitialized=true;
+    loadRetention();
+  }
+}
+
+/* ── Retention tab ── */
+let retentionInitialized=false;
+const RETENTION_MILESTONE_ORDER=['open_app_click','reached_login','signup_complete','onboarding_complete'];
+
+async function loadRetention(){
+  const body=document.getElementById('ret-body');
+  const from=toYYYYMMDD(selStart);
+  const to=toYYYYMMDD(selEnd);
+  const campaignId=document.getElementById('ret-campaign').value;
+
+  body.innerHTML='<div class="ret-loading">Loading retention data…</div>';
+
+  try{
+    const params=new URLSearchParams({from,to,campaign_id:campaignId});
+    const res=await fetch(`/api/retention?${params}`);
+    const data=await res.json();
+    if(!res.ok) throw new Error(data.error||'API error');
+    renderRetention(data);
+  }catch(e){
+    body.innerHTML=`<div class="ret-loading" style="color:#f87171">Failed to load: ${e.message}</div>`;
+  }
+}
+
+function renderRetention(data){
+  const body=document.getElementById('ret-body');
+  const milestones=data.milestones||{};
+  const milestoneFilter=document.getElementById('ret-milestone').value;
+  const keysToShow=milestoneFilter==='all' ? RETENTION_MILESTONE_ORDER : [milestoneFilter];
+  let html='';
+
+  keysToShow.forEach(key=>{
+    const m=milestones[key];
+    if(!m) return;
+    html+=`
+    <div class="ret-milestone-section">
+      <div class="ret-milestone-head">
+        <div class="ret-milestone-title">${m.label}</div>
+        <div class="ret-cohort-size">cohort size: ${m.cohort_size.toLocaleString('en-IN')}</div>
+      </div>
+      <div class="ret-cards">
+        <div class="ret-card">
+          <div class="ret-card-label">D1</div>
+          <div class="ret-card-pct">${m.d1.pct}%</div>
+          <div class="ret-card-count">${m.d1.count.toLocaleString('en-IN')} users</div>
+        </div>
+        <div class="ret-card">
+          <div class="ret-card-label">D7</div>
+          <div class="ret-card-pct">${m.d7.pct}%</div>
+          <div class="ret-card-count">${m.d7.count.toLocaleString('en-IN')} users</div>
+        </div>
+        <div class="ret-card">
+          <div class="ret-card-label">D15</div>
+          <div class="ret-card-pct">${m.d15.pct}%</div>
+          <div class="ret-card-count">${m.d15.count.toLocaleString('en-IN')} users</div>
+        </div>
+        <div class="ret-card">
+          <div class="ret-card-label">D30</div>
+          <div class="ret-card-pct">${m.d30.pct}%</div>
+          <div class="ret-card-count">${m.d30.count.toLocaleString('en-IN')} users</div>
+        </div>
+      </div>
+    </div>`;
+  });
+
+  body.innerHTML=html || '<div class="ret-loading">No data for this range</div>';
 }
 
 /* ── calendar ── */
@@ -577,6 +695,7 @@ function applyPop(){
   document.getElementById('date-label').textContent=fmtLabel(selStart)+' — '+fmtLabel(selEnd);
   document.getElementById('popover').classList.remove('open');
   loadData();
+  if(currentTab==='retention')loadRetention();
 }
 document.addEventListener('click',e=>{
   const pop=document.getElementById('popover'),btn=document.getElementById('date-btn');
