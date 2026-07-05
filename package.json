@@ -5,6 +5,7 @@
   "type": "module",
   "dependencies": {
     "@google-analytics/data": "^4.5.0",
+    "@google-cloud/bigquery": "^7.9.0",
     "@supabase/supabase-js": "^2.43.0"
   }
 }

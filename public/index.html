@@ -1023,9 +1023,7 @@ function renderWebApp(){
 
 // ── App Funnel Modal ──────────────────────────────────────────────────
 const APP_FUNNEL_LABELS = {
-  // 'login': { label: 'Opened App (Login Screen)', color: '#a78bfa' },
-  // ^ FUTURE: enable when customUser:login_method dimension has data (registered 2 Jul 2026)
-  //   filter to login_method='guest' — see api/app-funnel.js
+  'login':                          { label: 'Reached Login Screen',  color: '#818cf8' },
   'signup_initiate':               { label: 'Signup Initiated',      color: '#a78bfa' },
   'onboarding_display_name_next':  { label: 'Entered Display Name',  color: '#60a5fa' },
   'onboarding_username_next':      { label: 'Entered Username',      color: '#34d399' },
@@ -1036,14 +1034,14 @@ const APP_FUNNEL_LABELS = {
 
 const appFunnelCache = {};  // key: `${campaignId}_${from}_${to}` → data
 
-async function openAppFunnel(campaignId, campaignName, appOpeners) {
+async function openAppFunnel(campaignId, campaignName, clickedCount) {
   const overlay = document.getElementById('af-overlay');
   const title   = document.getElementById('af-modal-title');
   const subtitle= document.getElementById('af-modal-subtitle');
   const body    = document.getElementById('af-modal-body');
 
   title.textContent   = campaignName || campaignId;
-  subtitle.textContent= `${appOpeners.toLocaleString('en-IN')} users clicked Open App → in-app journey below`;
+  subtitle.textContent= `${clickedCount.toLocaleString('en-IN')} users clicked Open App → in-app journey below`;
   body.innerHTML      = '<div class="af-loading">Fetching app funnel from GA4…</div>';
   overlay.style.display = 'flex';
   document.body.style.overflow = 'hidden';
@@ -1053,7 +1051,7 @@ async function openAppFunnel(campaignId, campaignName, appOpeners) {
   const cacheKey = `${campaignId}_${from}_${to}`;
 
   if (appFunnelCache[cacheKey]) {
-    renderAppFunnel(appFunnelCache[cacheKey], appOpeners);
+    renderAppFunnel(appFunnelCache[cacheKey], clickedCount);
     return;
   }
 
@@ -1063,7 +1061,7 @@ async function openAppFunnel(campaignId, campaignName, appOpeners) {
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'API error');
     appFunnelCache[cacheKey] = data;
-    renderAppFunnel(data, appOpeners);
+    renderAppFunnel(data, clickedCount);
   } catch(e) {
     body.innerHTML = `<div class="af-loading" style="color:#f87171">Failed to load: ${e.message}</div>`;
   }
@@ -1074,25 +1072,29 @@ function closeAppFunnel() {
   document.body.style.overflow = '';
 }
 
-function renderAppFunnel(data, appOpeners) {
+function renderAppFunnel(data, clickedCount) {
   const body   = document.getElementById('af-modal-body');
   const events = data.event_order || Object.keys(APP_FUNNEL_LABELS);
   const funnel = data.funnel || {};
+  // appOpeners = BQ-verified users who actually opened the app (has native appVersion).
+  // clickedCount = raw GA4 open_app_click count (may include users GA4 couldn't stitch).
+  const appOpeners = data.app_openers ?? clickedCount;
 
   const signedUp     = funnel['signup_initiate']       || 0;
   const onboarded    = funnel['onboarding_done_click']  || 0;
   const homeFeed     = funnel['home_feed_tab_view']     || 0;
-  const droppedAtLogin = Math.max(0, appOpeners - signedUp);
+  // Never opened the app at all (BQ-verified) — the real bottleneck, per 5 Jul validation
+  const neverOpened  = Math.max(0, clickedCount - appOpeners);
 
   // ── Summary cards ──
   let html = `<div class="af-summary">
     <div class="af-sum-card">
       <div class="af-sum-label">Open App Click</div>
-      <div class="af-sum-val purple">${appOpeners.toLocaleString('en-IN')}</div>
+      <div class="af-sum-val purple">${clickedCount.toLocaleString('en-IN')}</div>
     </div>
     <div class="af-sum-card">
-      <div class="af-sum-label">Dropped at Login</div>
-      <div class="af-sum-val red">${droppedAtLogin.toLocaleString('en-IN')}</div>
+      <div class="af-sum-label">Never Opened App</div>
+      <div class="af-sum-val red">${neverOpened.toLocaleString('en-IN')}</div>
     </div>
     <div class="af-sum-card">
       <div class="af-sum-label">Signed Up</div>
@@ -1104,9 +1106,30 @@ function renderAppFunnel(data, appOpeners) {
     </div>
   </div>`;
 
-  // ── Funnel steps ──
+  // ── Funnel steps ── (synthetic "Opened App" step prepended, then GA4 onboarding steps)
   html += '<div class="af-funnel">';
-  const maxVal = Math.max(signedUp, appOpeners, 1);
+  const maxVal = Math.max(clickedCount, 1);
+
+  // Step 1: Opened App (BQ-verified) — synthetic, not part of events[] from the API
+  const openedPct = clickedCount > 0 ? ((appOpeners / clickedCount) * 100).toFixed(1) : '—';
+  const openedBarPct = Math.round((appOpeners / maxVal) * 100);
+  html += `
+    <div class="af-step">
+      <div class="af-step-left">
+        <div class="af-step-num" style="background:#818cf8">1</div>
+        <div class="af-step-info">
+          <div class="af-step-label">Opened App</div>
+          <div class="af-step-event">appVersion (BigQuery-verified)</div>
+          <div class="af-step-bar-wrap">
+            <div class="af-step-bar" style="width:${openedBarPct}%;background:#818cf8"></div>
+          </div>
+        </div>
+      </div>
+      <div class="af-step-right">
+        <div class="af-step-count">${appOpeners.toLocaleString('en-IN')}</div>
+        <div class="af-step-pct">${openedPct}% of clicks · ${neverOpened > 0 ? neverOpened + ' never opened app' : 'all opened'}</div>
+      </div>
+    </div>`;
 
   events.forEach((evt, idx) => {
     const meta  = APP_FUNNEL_LABELS[evt] || { label: evt, color: '#6b7280' };
@@ -1116,15 +1139,12 @@ function renderAppFunnel(data, appOpeners) {
     const convFromTop  = appOpeners > 0 ? ((count / appOpeners) * 100).toFixed(1) : '—';
     const barPct = maxVal > 0 ? Math.round((count / maxVal) * 100) : 0;
 
-    // Step 0 (signup_initiate) shows drop from appOpeners
-    const pctLabel = idx === 0
-      ? `${convFromTop}% of app openers · ${droppedAtLogin > 0 ? droppedAtLogin + ' dropped at login' : 'all signed up'}`
-      : `${convFromPrev}% from prev · ${convFromTop}% of app openers`;
+    const pctLabel = `${convFromPrev}% from prev · ${convFromTop}% of app openers`;
 
     html += `
     <div class="af-step">
       <div class="af-step-left">
-        <div class="af-step-num" style="background:${meta.color}">${idx+1}</div>
+        <div class="af-step-num" style="background:${meta.color}">${idx+2}</div>
         <div class="af-step-info">
           <div class="af-step-label">${meta.label}</div>
           <div class="af-step-event">${evt}</div>
