@@ -504,18 +504,8 @@ svg.fnl-branch-svg,.fnl-connectors{display:none!important}
 </div>
 
 <div id="view-retention" class="page page-hidden">
-  <div class="sl">Retention — ad-attributed users <span style="color:var(--t3);font-weight:400;font-size:12px">(Day 0 date range uses the date picker above)</span></div>
+  <div class="sl">Retention — Finished Onboarding <span style="color:var(--t3);font-weight:400;font-size:12px">(Day 0 date range uses the date picker above)</span></div>
   <div class="ret-controls">
-    <div class="ret-input-group">
-      <span class="ret-label">Day 0 Milestone</span>
-      <select class="ret-select" id="ret-milestone">
-        <option value="all">All Milestones</option>
-        <option value="open_app_click">Clicked Open App</option>
-        <option value="reached_login">Reached Login / Opened App</option>
-        <option value="signup_complete">Completed Signup</option>
-        <option value="onboarding_complete">Finished Onboarding</option>
-      </select>
-    </div>
     <div class="ret-input-group">
       <span class="ret-label">Campaign</span>
       <select class="ret-select" id="ret-campaign">
@@ -590,7 +580,6 @@ function switchTab(tab){
 
 /* ── Retention tab ── */
 let retentionInitialized=false;
-const RETENTION_MILESTONE_ORDER=['open_app_click','reached_login','signup_complete','onboarding_complete'];
 
 async function loadRetention(){
   const body=document.getElementById('ret-body');
@@ -611,48 +600,39 @@ async function loadRetention(){
   }
 }
 
+function retCard(label,bucket){
+  const pctDisplay = bucket.measurable ? `${bucket.pct}%` : 'N/A';
+  const subDisplay = bucket.measurable
+    ? `${bucket.count.toLocaleString('en-IN')} users`
+    : 'window not elapsed yet';
+  return `
+        <div class="ret-card">
+          <div class="ret-card-label">${label}</div>
+          <div class="ret-card-pct">${pctDisplay}</div>
+          <div class="ret-card-count">${subDisplay}</div>
+        </div>`;
+}
+
 function renderRetention(data){
   const body=document.getElementById('ret-body');
-  const milestones=data.milestones||{};
-  const milestoneFilter=document.getElementById('ret-milestone').value;
-  const keysToShow=milestoneFilter==='all' ? RETENTION_MILESTONE_ORDER : [milestoneFilter];
-  let html='';
+  const m=data.milestone;
+  if(!m){ body.innerHTML='<div class="ret-loading">No data for this range</div>'; return; }
 
-  keysToShow.forEach(key=>{
-    const m=milestones[key];
-    if(!m) return;
-    html+=`
+  const html=`
     <div class="ret-milestone-section">
       <div class="ret-milestone-head">
         <div class="ret-milestone-title">${m.label}</div>
         <div class="ret-cohort-size">cohort size: ${m.cohort_size.toLocaleString('en-IN')}</div>
       </div>
       <div class="ret-cards">
-        <div class="ret-card">
-          <div class="ret-card-label">D1</div>
-          <div class="ret-card-pct">${m.d1.pct}%</div>
-          <div class="ret-card-count">${m.d1.count.toLocaleString('en-IN')} users</div>
-        </div>
-        <div class="ret-card">
-          <div class="ret-card-label">D7</div>
-          <div class="ret-card-pct">${m.d7.pct}%</div>
-          <div class="ret-card-count">${m.d7.count.toLocaleString('en-IN')} users</div>
-        </div>
-        <div class="ret-card">
-          <div class="ret-card-label">D15</div>
-          <div class="ret-card-pct">${m.d15.pct}%</div>
-          <div class="ret-card-count">${m.d15.count.toLocaleString('en-IN')} users</div>
-        </div>
-        <div class="ret-card">
-          <div class="ret-card-label">D30</div>
-          <div class="ret-card-pct">${m.d30.pct}%</div>
-          <div class="ret-card-count">${m.d30.count.toLocaleString('en-IN')} users</div>
-        </div>
+        ${retCard('D1',m.d1)}
+        ${retCard('D7',m.d7)}
+        ${retCard('D15',m.d15)}
+        ${retCard('D30',m.d30)}
       </div>
     </div>`;
-  });
 
-  body.innerHTML=html || '<div class="ret-loading">No data for this range</div>';
+  body.innerHTML=html;
 }
 
 /* ── calendar ── */
