@@ -435,14 +435,13 @@ svg.fnl-branch-svg,.fnl-connectors{display:none!important}
 <!-- ══════════════════ NORMAL TAB ══════════════════ -->
 <div id="view-normal" class="page">
   <div class="sl">Summary</div>
-  <div class="kgrid">
+  <div class="kgrid" style="grid-template-columns:repeat(6,1fr)">
     <div class="kpi"><div class="kl">Total spend</div><div class="kv" id="k-spend">—</div></div>
     <div class="kpi"><div class="kl">Impressions</div><div class="kv" id="k-impr">—</div></div>
     <div class="kpi"><div class="kl">Clicks</div><div class="kv" id="k-clicks">—</div></div>
     <div class="kpi"><div class="kl">Avg CPC</div><div class="kv" id="k-cpc">—</div></div>
-    <div class="kpi"><div class="kl">GA visitors</div><div class="kv" id="k-visitors">—</div></div>
-    <div class="kpi"><div class="kl">WA joins</div><div class="kv" id="k-wa">—</div></div>
-    <div class="kpi"><div class="kl">Cost / WA join</div><div class="kv" id="k-cwa">—</div></div>
+    <div class="kpi"><div class="kl">Results</div><div class="kv" id="k-results">—</div></div>
+    <div class="kpi"><div class="kl">Cost / Result</div><div class="kv" id="k-cresult">—</div></div>
   </div>
   <div class="sl" style="margin-top:18px">Campaign breakdown</div>
   <div class="tcard"><div class="tscroll"><table>
@@ -451,7 +450,6 @@ svg.fnl-branch-svg,.fnl-connectors{display:none!important}
         <th></th><th></th><th></th><th></th><th></th>
         <th colspan="7" class="gm">Meta</th>
         <th colspan="4" class="gg">GA4</th>
-        <th></th>
       </tr>
       <tr class="cols">
         <th class="tcb"></th><th class="tex"></th>
@@ -460,11 +458,10 @@ svg.fnl-branch-svg,.fnl-connectors{display:none!important}
         <th>Impressions</th><th>Reach</th><th>Clicks</th>
         <th>Spent (&#8377;)</th><th>CPC (&#8377;)</th><th>Results</th><th>&#8377; / Result</th>
         <th>Visitors</th><th>&#8377; / Visitor</th><th>WA Joins</th><th>&#8377; / WA Join</th>
-        <th class="wa-col">WebApp</th>
       </tr>
     </thead>
     <tbody id="tbody">
-      <tr><td colspan="17" class="state-loading"><span class="spinner"></span>Loading data...</td></tr>
+      <tr><td colspan="16" class="state-loading"><span class="spinner"></span>Loading data...</td></tr>
     </tbody>
   </table></div></div>
 </div>
@@ -748,7 +745,7 @@ async function loadData(){
   Object.keys(funnelCache).forEach(k=>delete funnelCache[k]);
   funnelFetchPromise=null;
   cachedRows.forEach(r=>delete r.adsets);
-  document.getElementById('tbody').innerHTML='<tr><td colspan="17" class="state-loading"><span class="spinner"></span>Loading data...</td></tr>';
+  document.getElementById('tbody').innerHTML='<tr><td colspan="16" class="state-loading"><span class="spinner"></span>Loading data...</td></tr>';
   try{
     const res=await fetch(`/api/campaigns?from=${from}&to=${to}`);
     const json=await res.json();
@@ -759,13 +756,13 @@ async function loadData(){
     fetchFunnelData().then(()=>{ if(currentTab==='webapp')renderWebApp(); });
     if(currentTab==='webapp')renderWebApp();
   }catch(err){
-    document.getElementById('tbody').innerHTML=`<tr><td colspan="17" class="state-error">Failed to load: ${err.message}</td></tr>`;
+    document.getElementById('tbody').innerHTML=`<tr><td colspan="16" class="state-error">Failed to load: ${err.message}</td></tr>`;
   }
 }
 
 /* ── render normal table ── */
 function renderTable(rows){
-  if(!rows.length){document.getElementById('tbody').innerHTML='<tr><td colspan="17" class="state-empty">No data for this date range.</td></tr>';updateKPIs([]);return;}
+  if(!rows.length){document.getElementById('tbody').innerHTML='<tr><td colspan="16" class="state-empty">No data for this date range.</td></tr>';updateKPIs([]);return;}
   const included=rows.filter(r=>!excluded.has(r.campaign_name+'__'+r.src));
   const includedAdj=included.map(r=>{
     if(r.adsets&&r.adsets.length&&excludedAdsets.size>0){
@@ -811,8 +808,6 @@ function renderTable(rows){
       <td class="${dr.cost_visitor>=WARN_VISITOR?'cw':dr.cost_visitor>0&&dr.cost_visitor<=GOOD_VISITOR?'cgood':''}">${fmtR(dr.cost_visitor)}</td>
       <td>${fmtN(dr.wa_joins)}</td>
       <td class="${dr.cost_wa_join>=WARN_WA?'cw':dr.cost_wa_join>0&&dr.cost_wa_join<=GOOD_WA?'cgood':''}">${fmtR(dr.cost_wa_join)}</td>`}
-      <td class="sc">${isWA ? `<span class="wa-link-capsule" onclick="switchTab('webapp');waExpanded.add('${r.campaign_id}');renderWebApp()">View in WebApp <svg width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><path d='M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6'/><polyline points='15 3 21 3 21 9'/><line x1='10' y1='14' x2='21' y2='3'/></svg></span>` : `<span class="wa-toggle" onclick="toggleWebApp('${r.campaign_id}','${r.campaign_name.replace(/'/g,"\\'")}')">${'+ WebApp'}</span>`}
-      </td>
     </tr>`;
     if(isExpanded){
       if(r.adsets&&r.adsets.length){
@@ -830,7 +825,6 @@ function renderTable(rows){
             <td>${fmtN(as.ga_visitors||0)}</td><td>${fmtR(as.cost_visitor||0)}</td>
             <td>${fmtN(as.wa_joins||0)}</td>
             <td class="${(as.cost_wa_join||0)>=WARN_WA?'cw':(as.cost_wa_join||0)>0&&(as.cost_wa_join||0)<=GOOD_WA?'cgood':''}">${fmtR(as.cost_wa_join||0)}</td>
-            <td></td>
           </tr>`;
           if(asExpanded&&hasAds)as.ads.forEach((ad,di)=>{
             html+=`<tr class="tree-ad${di===as.ads.length-1&&ai===r.adsets.length-1?' tree-last-ad':''}">
@@ -841,12 +835,12 @@ function renderTable(rows){
               <td>${fmtR(ad.spent||0)}</td>
               <td class="${(ad.cpc||0)>=WARN_CPC?'cw':(ad.cpc||0)>0&&(ad.cpc||0)<=GOOD_CPC?'cgood':''}">${fmtR(ad.cpc||0)}</td>
               <td>${fmtN(ad.landings||0)}</td><td class="${(ad.cost_landing||0)>=WARN_LANDING?'cw':''}">${fmtR(ad.cost_landing||0)}</td>
-              <td>—</td><td>—</td><td>—</td><td>—</td><td></td>
+              <td>—</td><td>—</td><td>—</td><td>—</td>
             </tr>`;
           });
         });
       }else{
-        html+=`<tr class="tree-adset"><td colspan="17"><div class="skel"><div class="skel-line" style="width:55%"></div><div class="skel-line" style="width:40%"></div><div class="skel-line" style="width:48%"></div></div></td></tr>`;
+        html+=`<tr class="tree-adset"><td colspan="16"><div class="skel"><div class="skel-line" style="width:55%"></div><div class="skel-line" style="width:40%"></div><div class="skel-line" style="width:48%"></div></div></td></tr>`;
       }
     }
   });
@@ -857,21 +851,20 @@ function renderTable(rows){
     <td>${fmtR(T.spent)}</td><td>${fmtR(T.clicks>0?T.spent/T.clicks:0)}</td>
     <td>${fmtN(T.landings)}</td><td>${fmtR(T.landings>0?T.spent/T.landings:0)}</td>
     <td>${fmtN(T.ga_visitors)}</td><td>${fmtR(T.ga_visitors>0?T.spent/T.ga_visitors:0)}</td>
-    <td>${fmtN(T.wa_joins)}</td><td>${fmtR(T.wa_joins>0?T.spent/T.wa_joins:0)}</td><td></td>
+    <td>${fmtN(T.wa_joins)}</td><td>${fmtR(T.wa_joins>0?T.spent/T.wa_joins:0)}</td>
   </tr>`;
   document.getElementById('tbody').innerHTML=html;
 }
 
 function updateKPIs(rows){
-  const T={impressions:0,clicks:0,spent:0,ga_visitors:0,wa_joins:0};
-  rows.forEach(r=>{T.impressions+=r.impressions;T.clicks+=r.clicks;T.spent+=r.spent;T.ga_visitors+=r.ga_visitors;T.wa_joins+=r.wa_joins;});
+  const T={impressions:0,clicks:0,spent:0,landings:0};
+  rows.forEach(r=>{T.impressions+=r.impressions;T.clicks+=r.clicks;T.spent+=r.spent;T.landings+=(r.landings||0);});
   document.getElementById('k-spend').textContent=fmtR(T.spent);
   document.getElementById('k-impr').textContent=fmtN(T.impressions);
   document.getElementById('k-clicks').textContent=fmtN(T.clicks);
   document.getElementById('k-cpc').textContent=T.clicks>0?fmtR(T.spent/T.clicks):'—';
-  document.getElementById('k-visitors').textContent=fmtN(T.ga_visitors);
-  document.getElementById('k-wa').textContent=fmtN(T.wa_joins);
-  document.getElementById('k-cwa').textContent=T.wa_joins>0?fmtR(T.spent/T.wa_joins):'—';
+  document.getElementById('k-results').textContent=fmtN(T.landings);
+  document.getElementById('k-cresult').textContent=T.landings>0?fmtR(T.spent/T.landings):'—';
 }
 
 /* ══════════════════════════════════════════

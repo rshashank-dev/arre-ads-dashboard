@@ -26,13 +26,24 @@ const META_FIELDS = [
 ].join(',');
 
 // Priority order: app_install > lead > landing_page_view
-const RESULT_PRIORITY = ['app_install', 'lead', 'landing_page_view'];
+// NOTE: Meta's Insights API never actually returns an action_type literally named
+// "app_install" — for App Installs objective campaigns it returns "mobile_app_install"
+// (and sometimes "omni_app_install" as an omnichannel roll-up of the same event).
+// Each entry below is a group of raw Meta action_type values that all map to the same
+// logical result; first matching value in the group wins (never summed, to avoid
+// double-counting roll-up duplicates like omni_*).
+const RESULT_GROUPS = [
+  { key: 'app_install', metaTypes: ['mobile_app_install', 'omni_app_install', 'app_install'] },
+  { key: 'lead',         metaTypes: ['lead'] },
+];
 
 function parseResult(actions = []) {
-  for (const type of RESULT_PRIORITY) {
-    const a = actions.find(x => x.action_type === type);
-    if (a && parseInt(a.value, 10) > 0) {
-      return { count: parseInt(a.value, 10), type };
+  for (const group of RESULT_GROUPS) {
+    for (const metaType of group.metaTypes) {
+      const a = actions.find(x => x.action_type === metaType);
+      if (a && parseInt(a.value, 10) > 0) {
+        return { count: parseInt(a.value, 10), type: group.key };
+      }
     }
   }
   // fallback: landing_page_view even if 0
@@ -202,21 +213,37 @@ export default async function handler(req, res) {
     const { visitorsMap, waMap, ga4_debug } = ga4Data;
 
     // ── 1. Upsert campaigns ──
-    const campaignUpserts = campaignRows.map(r => ({
-      sync_date:     date,
-      campaign_id:   r.campaign_id,
-      campaign_name: r.campaign_name,
-      src:           'meta',
-      impressions:   parseInt(r.impressions || 0, 10),
-      reach:         parseInt(r.reach       || 0, 10),
-      clicks:        parseInt(r.clicks      || 0, 10),
-      spent:         parseFloat(r.spend     || 0),
-      cpc:           parseFloat(r.cpc       || 0),
-      landings:      parseResult(r.actions).count,
-      result_type:   parseResult(r.actions).type,
-      ga_visitors:   visitorsMap[r.campaign_id] || 0,
-      wa_joins:      waMap[r.campaign_id]        || 0,
-    }));
+    // meta_debug: campaigns that spent money but resolved to 0 results — usually means
+    // Meta returned an action_type this parser doesn't recognize yet. Check
+    // meta_debug.zero_result_campaigns in the response before assuming a campaign is
+    // genuinely underperforming.
+    const meta_debug = { zero_result_campaigns: [] };
+
+    const campaignUpserts = campaignRows.map(r => {
+      const result = parseResult(r.actions);
+      if (result.count === 0 && parseFloat(r.spend || 0) > 0) {
+        meta_debug.zero_result_campaigns.push({
+          campaign_id: r.campaign_id,
+          campaign_name: r.campaign_name,
+          action_types_seen: (r.actions || []).map(a => `${a.action_type}:${a.value}`),
+        });
+      }
+      return {
+        sync_date:     date,
+        campaign_id:   r.campaign_id,
+        campaign_name: r.campaign_name,
+        src:           'meta',
+        impressions:   parseInt(r.impressions || 0, 10),
+        reach:         parseInt(r.reach       || 0, 10),
+        clicks:        parseInt(r.clicks      || 0, 10),
+        spent:         parseFloat(r.spend     || 0),
+        cpc:           parseFloat(r.cpc       || 0),
+        landings:      result.count,
+        result_type:   result.type,
+        ga_visitors:   visitorsMap[r.campaign_id] || 0,
+        wa_joins:      waMap[r.campaign_id]        || 0,
+      };
+    });
 
     if (campaignUpserts.length > 0) {
       const { error } = await supabase
@@ -279,7 +306,8 @@ export default async function handler(req, res) {
       campaigns: campaignUpserts.length,
       adsets:    adsetUpserts.length,
       ads:       adUpserts.length,
-      ga4_debug,   // <- read this from the live endpoint to see exactly what WA returned
+      ga4_debug,    // <- read this from the live endpoint to see exactly what WA returned
+      meta_debug,   // <- campaigns with spend but 0 parsed results; check action_types_seen
     });
 
   } catch (err) {
