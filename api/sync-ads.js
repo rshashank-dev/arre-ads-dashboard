@@ -96,6 +96,34 @@ async function fetchMetaLevel(date, level) {
   return rows;
 }
 
+// Meta's own "Results" (what Ads Manager shows, e.g. onboarding_done_click) is NOT in `actions`
+// (custom app events are lumped into app_custom_event.other). Newer Graph versions expose it as
+// the `results` insights field: [{indicator:'actions:app_custom_event.xxx', values:[{value}]}].
+async function fetchMetaResults(date, level, version = 'v21.0') {
+  const token     = process.env.META_ACCESS_TOKEN;
+  const accountId = process.env.META_AD_ACCOUNT_ID;
+  const idField   = level === 'campaign' ? 'campaign_id' : level === 'adset' ? 'adset_id' : 'ad_id';
+  let url = `https://graph.facebook.com/${version}/act_${accountId}/insights`
+    + `?fields=${idField},results,cost_per_result`
+    + `&time_range={"since":"${date}","until":"${date}"}`
+    + `&level=${level}&limit=500&access_token=${token}`;
+  const map = {};
+  const raw = [];
+  while (url) {
+    const res  = await fetch(url);
+    const json = await res.json();
+    if (json.error) return { map, raw, error: json.error.message };
+    (json.data || []).forEach(r => {
+      raw.push(r);
+      const v = r.results?.[0];
+      const val = v?.values?.[0]?.value;
+      if (val !== undefined) map[r[idField]] = { count: parseInt(val, 10) || 0, event: (v.indicator || '').replace(/^actions:/, '') };
+    });
+    url = json.paging?.next || null;
+  }
+  return { map, raw, error: null };
+}
+
 // ── GA4 ───────────────────────────────────────────────────────────────────────
 
 // WhatsApp joins = users who fired the whatsapp_join_click event, by session campaign
@@ -221,8 +249,10 @@ export default async function handler(req, res) {
     // ?dry=1 — read-only check: returns every campaign's raw Meta action types + the WA map,
     // writes nothing. Use it to confirm the onboarding_done action name before relying on it.
     if (req.query.dry) {
+      const probe = await fetchMetaResults(date, 'campaign');
       return res.status(200).json({
         dry: true, date, ga4_debug,
+        results_probe: { error: probe.error, raw: probe.raw },
         campaigns: campaignRows.map(r => ({
           campaign_id: r.campaign_id,
           campaign_name: r.campaign_name,
