@@ -237,12 +237,17 @@ export default async function handler(req, res) {
     console.log(`[sync-ads] Syncing date: ${date}`);
 
     // Fetch all three levels in parallel along with GA4
-    const [campaignRows, adsetRows, adRows, ga4Data] = await Promise.all([
+    const [campaignRows, adsetRows, adRows, ga4Data, resC, resA, resAd] = await Promise.all([
       fetchMetaLevel(date, 'campaign'),
       fetchMetaLevel(date, 'adset'),
       fetchMetaLevel(date, 'ad'),
       fetchGA4(date),
+      fetchMetaResults(date, 'campaign'),
+      fetchMetaResults(date, 'adset'),
+      fetchMetaResults(date, 'ad'),
     ]);
+    const metaResultsErrors = [resC, resA, resAd].map(x => x.error).filter(Boolean);
+    const pickRes = (m, id) => m[id] || { count: 0, event: null };
 
     const { visitorsMap, waMap, ga4_debug } = ga4Data;
 
@@ -293,8 +298,8 @@ export default async function handler(req, res) {
         result_type:   result.type,
         ga_visitors:   visitorsMap[r.campaign_id] || 0,
         wa_joins:      waMap[r.campaign_id]        || 0,
-        results:       parseOnboarding(r.actions).count,
-        result_event:  parseOnboarding(r.actions).event,
+        results:       pickRes(resC.map, r.campaign_id).count,
+        result_event:  pickRes(resC.map, r.campaign_id).event,
       };
     });
 
@@ -319,8 +324,8 @@ export default async function handler(req, res) {
       spent:         parseFloat(r.spend     || 0),
       cpc:           parseFloat(r.cpc       || 0),
       landings:      parseResult(r.actions).count,
-      results:       parseOnboarding(r.actions).count,
-      result_event:  parseOnboarding(r.actions).event,
+      results:       pickRes(resA.map, r.adset_id).count,
+      result_event:  pickRes(resA.map, r.adset_id).event,
     }));
 
     if (adsetUpserts.length > 0) {
@@ -346,8 +351,8 @@ export default async function handler(req, res) {
       spent:         parseFloat(r.spend     || 0),
       cpc:           parseFloat(r.cpc       || 0),
       landings:      parseResult(r.actions).count,
-      results:       parseOnboarding(r.actions).count,
-      result_event:  parseOnboarding(r.actions).event,
+      results:       pickRes(resAd.map, r.ad_id).count,
+      result_event:  pickRes(resAd.map, r.ad_id).event,
     }));
 
     if (adUpserts.length > 0) {
@@ -364,6 +369,7 @@ export default async function handler(req, res) {
       adsets:    adsetUpserts.length,
       ads:       adUpserts.length,
       ga4_debug,    // <- read this from the live endpoint to see exactly what WA returned
+      meta_results_errors: metaResultsErrors,
       meta_debug,   // <- campaigns with spend but 0 parsed results; check action_types_seen
     });
 
