@@ -10,10 +10,24 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_KEY
 );
 
+// "Yesterday" in IST (UTC+05:30). The cron fires at 19:30 UTC = 01:00 IST, when the
+// server's UTC date is still the previous IST day — using UTC here made every nightly
+// run sync the day before yesterday.
 function yesterday() {
-  const d = new Date();
-  d.setDate(d.getDate() - 1);
-  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  const ist = new Date(Date.now() + 5.5 * 60 * 60 * 1000);
+  ist.setUTCDate(ist.getUTCDate() - 1);
+  return ist.toISOString().slice(0, 10);
+}
+
+// Meta "Results" for campaigns optimised on the onboarding_done app event.
+// Ads Manager shows this as Results; in the Insights API it comes back inside `actions`
+// under an action_type containing "onboarding_done" (e.g. app_custom_event.onboarding_done).
+// First match wins, never summed (avoids double-counting roll-up variants).
+function parseOnboarding(actions = []) {
+  const a = actions.find(x => /onboarding_done/i.test(x.action_type || ''));
+  return a
+    ? { count: parseInt(a.value, 10) || 0, event: a.action_type }
+    : { count: 0, event: null };
 }
 
 // ── Meta helpers ──────────────────────────────────────────────────────────────
@@ -84,27 +98,22 @@ async function fetchMetaLevel(date, level) {
 
 // ── GA4 ───────────────────────────────────────────────────────────────────────
 
-// PRIMARY WA query — mirrors the "Whatsapp Button Clicks" GA4 report exactly:
-// dimension firstUserCampaign, metric activeUsers, filter eventName == 'click'.
-// firstUserCampaign is USER-scoped; combining it with an event-scoped eventName
-// filter is what the Data API rejects with INVALID_ARGUMENT (the report UI tolerates
-// it, runReport does not). We try it anyway — if a future API change accepts it,
-// great — and fall back when it throws.
+// WhatsApp joins = users who fired the whatsapp_join_click event, by session campaign
+// (the numeric utm_campaign id = Meta campaign id). Mirrors the GA4 exploration:
+// rows = event name, filter = session campaign, metric = Active users.
+const WA_EVENT = 'whatsapp_join_click';
+
+// PRIMARY WA query — sessionCampaignName + eventName are both accepted together by the
+// Data API; filter to the WA event and count activeUsers.
 async function fetchWAPrimary(client, propertyId, date) {
   const [resp] = await client.runReport({
     property: `properties/${propertyId}`,
     dateRanges: [{ startDate: date, endDate: date }],
-    dimensions: [{ name: 'firstUserCampaign' }],
+    dimensions: [{ name: 'sessionCampaignName' }, { name: 'eventName' }],
     metrics:    [{ name: 'activeUsers' }],
     dimensionFilter: {
-      andGroup: {
-        expressions: [
-          { filter: { fieldName: 'eventName',
-                      stringFilter: { matchType: 'EXACT', value: 'click' } } },
-          { notExpression: { filter: { fieldName: 'firstUserCampaign',
-                      inListFilter: { values: ['(referral)', '(direct)', '(organic)'] } } } },
-        ],
-      },
+      filter: { fieldName: 'eventName',
+                stringFilter: { matchType: 'EXACT', value: WA_EVENT } },
     },
   });
 
@@ -116,24 +125,21 @@ async function fetchWAPrimary(client, propertyId, date) {
   return map;
 }
 
-// FALLBACK WA query — scope-safe. sessionCampaignName (session-scoped) + eventName
-// as a DIMENSION (not a filter), metric eventCount (event-scoped). No cross-scope
-// dimensionFilter, so the Data API accepts it. We filter to the 'click' event in JS.
-// sessionCampaignName carries the same numeric utm_campaign id as firstUserCampaign
-// in this property (that's why the visitors query already joins on it).
+// FALLBACK WA query — same dimensions without a server-side filter (filtered in JS),
+// in case the filtered request is ever rejected.
 async function fetchWAFallback(client, propertyId, date) {
   const [resp] = await client.runReport({
     property: `properties/${propertyId}`,
     dateRanges: [{ startDate: date, endDate: date }],
     dimensions: [{ name: 'sessionCampaignName' }, { name: 'eventName' }],
-    metrics:    [{ name: 'eventCount' }],
+    metrics:    [{ name: 'activeUsers' }],
   });
 
   const map = {};
   for (const row of resp.rows || []) {
     const id        = row.dimensionValues[0].value;
     const eventName = row.dimensionValues[1].value;
-    if (eventName !== 'click') continue;
+    if (eventName !== WA_EVENT) continue;
     if (!/^\d+$/.test(id)) continue;
     map[id] = (map[id] || 0) + parseInt(row.metricValues[0].value, 10);
   }
@@ -166,7 +172,7 @@ async function fetchGA4(date) {
 
   try {
     waMap = await fetchWAPrimary(client, propertyId, date);
-    waMethod = 'firstUserCampaign+eventNameFilter';
+    waMethod = 'sessionCampaignName+eventName(filter)';
   } catch (err) {
     waPrimaryError = err.message;
     try {
@@ -212,6 +218,21 @@ export default async function handler(req, res) {
 
     const { visitorsMap, waMap, ga4_debug } = ga4Data;
 
+    // ?dry=1 — read-only check: returns every campaign's raw Meta action types + the WA map,
+    // writes nothing. Use it to confirm the onboarding_done action name before relying on it.
+    if (req.query.dry) {
+      return res.status(200).json({
+        dry: true, date, ga4_debug,
+        campaigns: campaignRows.map(r => ({
+          campaign_id: r.campaign_id,
+          campaign_name: r.campaign_name,
+          spend: r.spend,
+          actions: (r.actions || []).map(a => `${a.action_type}:${a.value}`),
+          parsed_onboarding: parseOnboarding(r.actions),
+        })),
+      });
+    }
+
     // ── 1. Upsert campaigns ──
     // meta_debug: campaigns that spent money but resolved to 0 results — usually means
     // Meta returned an action_type this parser doesn't recognize yet. Check
@@ -242,6 +263,8 @@ export default async function handler(req, res) {
         result_type:   result.type,
         ga_visitors:   visitorsMap[r.campaign_id] || 0,
         wa_joins:      waMap[r.campaign_id]        || 0,
+        results:       parseOnboarding(r.actions).count,
+        result_event:  parseOnboarding(r.actions).event,
       };
     });
 
@@ -266,6 +289,8 @@ export default async function handler(req, res) {
       spent:         parseFloat(r.spend     || 0),
       cpc:           parseFloat(r.cpc       || 0),
       landings:      parseResult(r.actions).count,
+      results:       parseOnboarding(r.actions).count,
+      result_event:  parseOnboarding(r.actions).event,
     }));
 
     if (adsetUpserts.length > 0) {
@@ -291,6 +316,8 @@ export default async function handler(req, res) {
       spent:         parseFloat(r.spend     || 0),
       cpc:           parseFloat(r.cpc       || 0),
       landings:      parseResult(r.actions).count,
+      results:       parseOnboarding(r.actions).count,
+      result_event:  parseOnboarding(r.actions).event,
     }));
 
     if (adUpserts.length > 0) {
